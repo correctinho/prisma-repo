@@ -360,6 +360,14 @@ model BusinessNotification {
   @@map("business_notifications")
 }
 
+model Categories {
+  uuid               String @id @default(uuid())
+  name               String
+  description        String?
+
+  @@map("categories")
+}
+
 model Products {
   uuid               String @id @default(uuid())
   business_info_uuid String

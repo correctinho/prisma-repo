@@ -1,4 +1,3 @@
-
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -99,6 +98,7 @@ model BusinessInfo {
   BusinessConfig   BusinessConfig[]
   Contracts        ContractInfo[]
   BusinessContract BusinessContract[]
+  Products         Products[]
 
   @@map("business_data")
 }
@@ -361,24 +361,35 @@ model BusinessNotification {
 }
 
 model Categories {
-  uuid               String @id @default(uuid())
-  name               String
-  description        String?
+  uuid        String     @id @default(uuid())
+  name        String
+  description String?
+  is_active   Boolean
+  created_at  String?
+  updated_at  String?
+  Products    Products[]
 
   @@map("categories")
 }
 
 model Products {
-  uuid               String @id @default(uuid())
+  uuid           String  @id @default(uuid())
+  category_uuid  String
+  name           String
+  description    String?
+  original_price Int
+  price          Int
+  image          String[]
+  stock          Int
+  weight         String
+  height         String
+  width          String
   business_info_uuid String
-  name               String
-  original_value     Int
-  value              Int
-  description        String
-  image              String
-  stock              Int
-  weight             String
-  volume             String
+  created_at         String?
+  updated_at         String?
+
+  Businessinfo BusinessInfo @relation(fields: [business_info_uuid], references: [uuid])
+  Categories   Categories   @relation(fields: [category_uuid], references: [uuid])
 
   @@map("products")
 }

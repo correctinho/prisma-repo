@@ -14,6 +14,12 @@ CREATE TYPE "BusinessTypeOptions" AS ENUM ('empregador', 'comercio', 'autonomo_c
 CREATE TYPE "UserDocumentValidationStatus" AS ENUM ('approved', 'denied', 'pending_to_send', 'under_analysis');
 
 -- CreateEnum
+CREATE TYPE "UserItemStatus" AS ENUM ('active', 'blocked', 'cancelled', 'to_be_cancelled');
+
+-- CreateEnum
+CREATE TYPE "ContractType" AS ENUM ('BUSINESS', 'USER');
+
+-- CreateEnum
 CREATE TYPE "TransactionStatus" AS ENUM ('pending', 'sucess', 'fail');
 
 -- CreateTable
@@ -48,11 +54,18 @@ CREATE TABLE "business_users" (
 );
 
 -- CreateTable
+CREATE TABLE "correctAdmin_business" (
+    "uuid" TEXT NOT NULL,
+    "business_info_uuid" TEXT NOT NULL,
+    "correct_admin_uuid" TEXT NOT NULL,
+
+    CONSTRAINT "correctAdmin_business_pkey" PRIMARY KEY ("uuid")
+);
+
+-- CreateTable
 CREATE TABLE "business_data" (
     "uuid" TEXT NOT NULL,
     "address_uuid" TEXT NOT NULL,
-    "branch_info_uuid" TEXT,
-    "branch_name" TEXT,
     "fantasy_name" TEXT NOT NULL,
     "corporate_reason" TEXT,
     "document" TEXT NOT NULL,
@@ -63,6 +76,9 @@ CREATE TABLE "business_data" (
     "phone_2" TEXT,
     "email" TEXT NOT NULL,
     "business_type" "BusinessTypeOptions" NOT NULL,
+    "employer_branch" TEXT,
+    "created_at" TEXT NOT NULL,
+    "updated_at" TEXT,
 
     CONSTRAINT "business_data_pkey" PRIMARY KEY ("uuid")
 );
@@ -149,10 +165,12 @@ CREATE TABLE "users_auth" (
 CREATE TABLE "items" (
     "uuid" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "img_url" TEXT,
     "description" TEXT NOT NULL,
     "item_type" TEXT NOT NULL,
     "item_category" TEXT NOT NULL,
     "parent_uuid" TEXT,
+    "business_info_uuid" TEXT,
     "created_at" TEXT NOT NULL,
     "updated_at" TEXT,
 
@@ -173,6 +191,16 @@ CREATE TABLE "branch_info" (
 );
 
 -- CreateTable
+CREATE TABLE "businessInfo_branch" (
+    "uuid" TEXT NOT NULL,
+    "branch_info_uuid" TEXT NOT NULL,
+    "business_info_uuid" TEXT NOT NULL,
+    "created_at" TEXT NOT NULL,
+
+    CONSTRAINT "businessInfo_branch_pkey" PRIMARY KEY ("uuid")
+);
+
+-- CreateTable
 CREATE TABLE "branch_item" (
     "uuid" TEXT NOT NULL,
     "branchInfo_uuid" TEXT NOT NULL,
@@ -183,25 +211,73 @@ CREATE TABLE "branch_item" (
 );
 
 -- CreateTable
-CREATE TABLE "users_wallet" (
+CREATE TABLE "businessInfo_item" (
+    "uuid" TEXT NOT NULL,
+    "item_uuid" TEXT NOT NULL,
+    "business_info_uuid" TEXT NOT NULL,
+    "created_at" TEXT NOT NULL,
+
+    CONSTRAINT "businessInfo_item_pkey" PRIMARY KEY ("uuid")
+);
+
+-- CreateTable
+CREATE TABLE "employer_item_details" (
+    "uuid" TEXT NOT NULL,
+    "item_uuid" TEXT NOT NULL,
+    "business_info_uuid" TEXT NOT NULL,
+    "cycle_start_day" INTEGER,
+    "cycle_end_day" INTEGER,
+    "created_at" TEXT,
+    "updated_at" TEXT,
+
+    CONSTRAINT "employer_item_details_pkey" PRIMARY KEY ("uuid")
+);
+
+-- CreateTable
+CREATE TABLE "employer_item_registers" (
+    "uuid" TEXT NOT NULL,
+    "employerItemDetails_uuid" TEXT NOT NULL,
+    "correct_payment_date" TEXT,
+    "correct_releasing_amount_to_user_date" TEXT,
+    "send_file_to_business_date" TEXT,
+    "created_at" TEXT,
+    "updated_at" TEXT,
+
+    CONSTRAINT "employer_item_registers_pkey" PRIMARY KEY ("uuid")
+);
+
+-- CreateTable
+CREATE TABLE "user_item" (
     "uuid" TEXT NOT NULL,
     "user_info_uuid" TEXT NOT NULL,
-    "benefit_uuid" TEXT NOT NULL,
+    "item_uuid" TEXT NOT NULL,
+    "item_name" TEXT NOT NULL,
     "balance" INTEGER NOT NULL,
-    "created_at" TEXT NOT NULL,
-    "updated_at" TEXT NOT NULL,
+    "status" "UserItemStatus" NOT NULL,
+    "blocked_at" TEXT,
+    "cancelled_at" TEXT,
+    "cancelling_request_at" TEXT,
+    "block_reason" TEXT,
+    "cancel_reason" TEXT,
+    "grace_period_end_date" TEXT,
+    "created_at" TEXT,
+    "updated_at" TEXT,
 
-    CONSTRAINT "users_wallet_pkey" PRIMARY KEY ("uuid")
+    CONSTRAINT "user_item_pkey" PRIMARY KEY ("uuid")
 );
 
 -- CreateTable
 CREATE TABLE "contract_info" (
     "uuid" TEXT NOT NULL,
+    "item_uuid" TEXT NOT NULL,
     "name" TEXT,
     "content" TEXT NOT NULL,
     "version" TEXT,
     "assigned_at" TEXT NOT NULL,
-    "business_info_uuid" TEXT NOT NULL,
+    "contract_type" "ContractType" NOT NULL,
+    "business_info_uuid" TEXT,
+    "user_info_uuid" TEXT,
+    "updated_at" TEXT,
 
     CONSTRAINT "contract_info_pkey" PRIMARY KEY ("uuid")
 );
@@ -218,7 +294,7 @@ CREATE TABLE "business_contract" (
 -- CreateTable
 CREATE TABLE "transactions" (
     "uuid" TEXT NOT NULL,
-    "payer_wallet_uuid" TEXT NOT NULL,
+    "user_item_uuid" TEXT NOT NULL,
     "favored_uuid" TEXT NOT NULL,
     "business_info_uuid" TEXT NOT NULL,
     "amount" INTEGER NOT NULL,
@@ -288,7 +364,7 @@ CREATE TABLE "categories" (
     "uuid" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
-    "is_active" BOOLEAN NOT NULL DEFAULT true,
+    "is_active" BOOLEAN NOT NULL,
     "created_at" TEXT,
     "updated_at" TEXT,
 
@@ -298,23 +374,21 @@ CREATE TABLE "categories" (
 -- CreateTable
 CREATE TABLE "products" (
     "uuid" TEXT NOT NULL,
-    "business_info_uuid" TEXT NOT NULL,
+    "category_uuid" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "original_value" INTEGER NOT NULL,
-    "value" INTEGER NOT NULL,
-    "description" TEXT NOT NULL,
-    "image" TEXT NOT NULL,
+    "description" TEXT,
+    "original_price" INTEGER NOT NULL,
+    "price" INTEGER NOT NULL,
+    "image" TEXT[],
     "stock" INTEGER NOT NULL,
     "weight" TEXT NOT NULL,
-    "volume" TEXT NOT NULL,
+    "height" TEXT NOT NULL,
+    "width" TEXT NOT NULL,
+    "business_info_uuid" TEXT NOT NULL,
+    "created_at" TEXT,
+    "updated_at" TEXT,
 
     CONSTRAINT "products_pkey" PRIMARY KEY ("uuid")
-);
-
--- CreateTable
-CREATE TABLE "_BusinessInfoToContractInfo" (
-    "A" TEXT NOT NULL,
-    "B" TEXT NOT NULL
 );
 
 -- CreateIndex
@@ -350,14 +424,14 @@ CREATE UNIQUE INDEX "users_auth_document_key" ON "users_auth"("document");
 -- CreateIndex
 CREATE UNIQUE INDEX "users_auth_email_key" ON "users_auth"("email");
 
--- CreateIndex
-CREATE UNIQUE INDEX "_BusinessInfoToContractInfo_AB_unique" ON "_BusinessInfoToContractInfo"("A", "B");
-
--- CreateIndex
-CREATE INDEX "_BusinessInfoToContractInfo_B_index" ON "_BusinessInfoToContractInfo"("B");
-
 -- AddForeignKey
 ALTER TABLE "business_users" ADD CONSTRAINT "business_users_business_info_uuid_fkey" FOREIGN KEY ("business_info_uuid") REFERENCES "business_data"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "correctAdmin_business" ADD CONSTRAINT "correctAdmin_business_business_info_uuid_fkey" FOREIGN KEY ("business_info_uuid") REFERENCES "business_data"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "correctAdmin_business" ADD CONSTRAINT "correctAdmin_business_correct_admin_uuid_fkey" FOREIGN KEY ("correct_admin_uuid") REFERENCES "correct_admin"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "business_data" ADD CONSTRAINT "business_data_address_uuid_fkey" FOREIGN KEY ("address_uuid") REFERENCES "addresses"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -375,7 +449,49 @@ ALTER TABLE "user_info" ADD CONSTRAINT "user_info_user_document_validation_uuid_
 ALTER TABLE "users_auth" ADD CONSTRAINT "users_auth_user_info_uuid_fkey" FOREIGN KEY ("user_info_uuid") REFERENCES "user_info"("uuid") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "users_wallet" ADD CONSTRAINT "users_wallet_user_info_uuid_fkey" FOREIGN KEY ("user_info_uuid") REFERENCES "user_info"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "items" ADD CONSTRAINT "items_business_info_uuid_fkey" FOREIGN KEY ("business_info_uuid") REFERENCES "business_data"("uuid") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "businessInfo_branch" ADD CONSTRAINT "businessInfo_branch_branch_info_uuid_fkey" FOREIGN KEY ("branch_info_uuid") REFERENCES "branch_info"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "businessInfo_branch" ADD CONSTRAINT "businessInfo_branch_business_info_uuid_fkey" FOREIGN KEY ("business_info_uuid") REFERENCES "business_data"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "branch_item" ADD CONSTRAINT "branch_item_item_uuid_fkey" FOREIGN KEY ("item_uuid") REFERENCES "items"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "branch_item" ADD CONSTRAINT "branch_item_branchInfo_uuid_fkey" FOREIGN KEY ("branchInfo_uuid") REFERENCES "branch_info"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "businessInfo_item" ADD CONSTRAINT "businessInfo_item_item_uuid_fkey" FOREIGN KEY ("item_uuid") REFERENCES "items"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "businessInfo_item" ADD CONSTRAINT "businessInfo_item_business_info_uuid_fkey" FOREIGN KEY ("business_info_uuid") REFERENCES "business_data"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "employer_item_details" ADD CONSTRAINT "employer_item_details_item_uuid_fkey" FOREIGN KEY ("item_uuid") REFERENCES "items"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "employer_item_details" ADD CONSTRAINT "employer_item_details_business_info_uuid_fkey" FOREIGN KEY ("business_info_uuid") REFERENCES "business_data"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "employer_item_registers" ADD CONSTRAINT "employer_item_registers_employerItemDetails_uuid_fkey" FOREIGN KEY ("employerItemDetails_uuid") REFERENCES "employer_item_details"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_item" ADD CONSTRAINT "user_item_user_info_uuid_fkey" FOREIGN KEY ("user_info_uuid") REFERENCES "user_info"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_item" ADD CONSTRAINT "user_item_item_uuid_fkey" FOREIGN KEY ("item_uuid") REFERENCES "items"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "contract_info" ADD CONSTRAINT "contract_info_item_uuid_fkey" FOREIGN KEY ("item_uuid") REFERENCES "items"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "contract_info" ADD CONSTRAINT "contract_info_business_info_uuid_fkey" FOREIGN KEY ("business_info_uuid") REFERENCES "business_data"("uuid") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "contract_info" ADD CONSTRAINT "contract_info_user_info_uuid_fkey" FOREIGN KEY ("user_info_uuid") REFERENCES "user_info"("uuid") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "business_contract" ADD CONSTRAINT "business_contract_business_info_uuid_fkey" FOREIGN KEY ("business_info_uuid") REFERENCES "business_data"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -384,7 +500,7 @@ ALTER TABLE "business_contract" ADD CONSTRAINT "business_contract_business_info_
 ALTER TABLE "business_contract" ADD CONSTRAINT "business_contract_contract_info_uuid_fkey" FOREIGN KEY ("contract_info_uuid") REFERENCES "contract_info"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "transactions" ADD CONSTRAINT "transactions_payer_wallet_uuid_fkey" FOREIGN KEY ("payer_wallet_uuid") REFERENCES "users_wallet"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "transactions" ADD CONSTRAINT "transactions_user_item_uuid_fkey" FOREIGN KEY ("user_item_uuid") REFERENCES "user_item"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "transactions" ADD CONSTRAINT "transactions_favored_uuid_fkey" FOREIGN KEY ("favored_uuid") REFERENCES "user_info"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -402,7 +518,7 @@ ALTER TABLE "user_notification" ADD CONSTRAINT "user_notification_user_info_uuid
 ALTER TABLE "business_notifications" ADD CONSTRAINT "business_notifications_business_user_uuid_fkey" FOREIGN KEY ("business_user_uuid") REFERENCES "business_users"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "_BusinessInfoToContractInfo" ADD CONSTRAINT "_BusinessInfoToContractInfo_A_fkey" FOREIGN KEY ("A") REFERENCES "business_data"("uuid") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "products" ADD CONSTRAINT "products_business_info_uuid_fkey" FOREIGN KEY ("business_info_uuid") REFERENCES "business_data"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "_BusinessInfoToContractInfo" ADD CONSTRAINT "_BusinessInfoToContractInfo_B_fkey" FOREIGN KEY ("B") REFERENCES "contract_info"("uuid") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "products" ADD CONSTRAINT "products_category_uuid_fkey" FOREIGN KEY ("category_uuid") REFERENCES "categories"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;

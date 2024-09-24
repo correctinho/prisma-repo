@@ -17,12 +17,13 @@ datasource db {
 }
 
 model CorrectAdmin {
-  uuid     String  @id @default(uuid())
-  name     String
-  userName String  @unique
-  email    String  @unique
-  password String
-  isAdmin  Boolean @default(true)
+  uuid                 String                 @id @default(uuid())
+  name                 String
+  userName             String                 @unique
+  email                String                 @unique
+  password             String
+  isAdmin              Boolean                @default(true)
+  CorrectAdminBusiness CorrectAdminBusiness[]
 
   @@map("correct_admin")
 }
@@ -74,11 +75,20 @@ model BusinessUser {
   @@map("business_users")
 }
 
+model CorrectAdminBusiness {
+  uuid               String @id @default(uuid())
+  business_info_uuid String
+  correct_admin_uuid String
+
+  BusinessInfo BusinessInfo @relation(fields: [business_info_uuid], references: [uuid])
+  CorrectAdmin CorrectAdmin @relation(fields: [correct_admin_uuid], references: [uuid])
+
+  @@map("correctAdmin_business")
+}
+
 model BusinessInfo {
   uuid                String              @id @default(uuid())
   address_uuid        String
-  branch_info_uuid    String?
-  branch_name         String?
   fantasy_name        String
   corporate_reason    String?
   document            String              @unique
@@ -89,16 +99,24 @@ model BusinessInfo {
   phone_2             String?
   email               String              @unique
   business_type       BusinessTypeOptions
+  employer_branch     String?
+  created_at          String
+  updated_at          String?
 
   Address Address? @relation(fields: [address_uuid], references: [uuid])
 
-  BusinessUser     BusinessUser[]
-  UserInfo         UserInfo[]
-  Transactions     Transactions[]
-  BusinessConfig   BusinessConfig[]
-  Contracts        ContractInfo[]
-  BusinessContract BusinessContract[]
-  Products         Products[]
+  BusinessUser         BusinessUser[]
+  UserInfo             UserInfo[]
+  Transactions         Transactions[]
+  BusinessConfig       BusinessConfig[]
+  Contracts            ContractInfo[]
+  BusinessContract     BusinessContract[]
+  Products             Products[]
+  Item                 Item[]
+  CorrectAdminBusiness CorrectAdminBusiness[]
+  BusinessinfoBranch   BusinessinfoBranch[]
+  BusinessInfoItem     BusinessInfoItem[]
+  EmployerItemDetails  EmployerItemDetails[]
 
   @@map("business_data")
 }
@@ -160,9 +178,10 @@ model UserInfo {
   BusinessInfo     BusinessInfo?           @relation(fields: [business_info_uuid], references: [uuid])
   Address          Address?                @relation(fields: [address_uuid], references: [uuid])
   UserValidation   UserDocumentValidation? @relation(fields: [user_document_validation_uuid], references: [uuid])
-  UserWallet       UserWallet[]
   Transactions     Transactions[]
   UserNotification UserNotification[]
+  UserItem         UserItem[]
+  ContractInfo     ContractInfo[]
 
   @@map("user_info")
 }
@@ -209,28 +228,51 @@ model UserAuth {
 }
 
 model Item {
-  uuid          String  @id @default(uuid())
-  name          String
-  description   String
-  item_type     String
-  item_category String
-  parent_uuid   String?
-  created_at    String
-  updated_at    String?
+  uuid               String  @id @default(uuid())
+  name               String
+  img_url            String?
+  description        String
+  item_type          String
+  item_category      String
+  parent_uuid        String?
+  business_info_uuid String?
+  created_at         String
+  updated_at         String?
+
+  BusinessInfo        BusinessInfo?         @relation(fields: [business_info_uuid], references: [uuid])
+  BranchItem          BranchItem[]
+  ContractInfo        ContractInfo[]
+  BusinessInfoItem    BusinessInfoItem[]
+  EmployerItemDetails EmployerItemDetails[]
+  UserItem            UserItem[]
 
   @@map("items")
 }
 
 model BranchInfo {
-  uuid             String  @id @default(uuid())
-  name             String
-  marketing_tax    Int
-  admin_tax        Int
-  market_place_tax Int
-  created_at       String
-  updated_at       String?
+  uuid               String               @id @default(uuid())
+  name               String
+  marketing_tax      Int
+  admin_tax          Int
+  market_place_tax   Int
+  created_at         String
+  updated_at         String?
+  BranchItem         BranchItem[]
+  BusinessinfoBranch BusinessinfoBranch[]
 
   @@map("branch_info")
+}
+
+model BusinessinfoBranch {
+  uuid               String @id @default(uuid())
+  branch_info_uuid   String
+  business_info_uuid String
+  created_at         String
+
+  BranchInfo   BranchInfo   @relation(fields: [branch_info_uuid], references: [uuid])
+  BusinessInfo BusinessInfo @relation(fields: [business_info_uuid], references: [uuid])
+
+  @@map("businessInfo_branch")
 }
 
 model BranchItem {
@@ -239,32 +281,105 @@ model BranchItem {
   item_uuid       String
   created_at      String
 
+  Item   Item       @relation(fields: [item_uuid], references: [uuid])
+  Branch BranchInfo @relation(fields: [branchInfo_uuid], references: [uuid])
+
   @@map("branch_item")
 }
 
-model UserWallet {
-  uuid           String @id @default(uuid())
-  user_info_uuid String
-  benefit_uuid   String
-  balance        Int
-  created_at     String
-  updated_at     String
+model BusinessInfoItem {
+  uuid               String @id @default(uuid())
+  item_uuid          String
+  business_info_uuid String
+  created_at         String
 
-  UserInfo     UserInfo       @relation(fields: [user_info_uuid], references: [uuid])
-  Transactions Transactions[]
+  Item         Item         @relation(fields: [item_uuid], references: [uuid])
+  BusinessInfo BusinessInfo @relation(fields: [business_info_uuid], references: [uuid])
 
-  @@map("users_wallet")
+  @@map("businessInfo_item")
+}
+
+model EmployerItemDetails {
+  uuid               String  @id @default(uuid())
+  item_uuid          String
+  business_info_uuid String
+  cycle_start_day    Int?
+  cycle_end_day      Int?
+  created_at         String?
+  updated_at         String?
+
+  Item                     Item                    @relation(fields: [item_uuid], references: [uuid])
+  BusinessInfo             BusinessInfo            @relation(fields: [business_info_uuid], references: [uuid])
+  EmployerPreItemRegisters EmployerItemRegisters[]
+
+  @@map("employer_item_details")
+}
+
+model EmployerItemRegisters {
+  uuid                                  String  @id @default(uuid())
+  employerItemDetails_uuid              String
+  correct_payment_date                  String?
+  correct_releasing_amount_to_user_date String?
+  send_file_to_business_date            String?
+  created_at                            String?
+  updated_at                            String?
+
+  EmployerItemDetail EmployerItemDetails @relation(fields: [employerItemDetails_uuid], references: [uuid])
+
+  @@map("employer_item_registers")
+}
+
+model UserItem {
+  uuid                  String         @id @default(uuid())
+  user_info_uuid        String
+  item_uuid             String
+  item_name             String
+  balance               Int
+  status                UserItemStatus
+  blocked_at            String?
+  cancelled_at          String?
+  cancelling_request_at String?
+  block_reason          String?
+  cancel_reason         String?
+  grace_period_end_date String?
+  created_at            String?
+  updated_at            String?
+  Transactions          Transactions[]
+
+  UserInfo UserInfo @relation(fields: [user_info_uuid], references: [uuid])
+  Item     Item     @relation(fields: [item_uuid], references: [uuid])
+
+  @@map("user_item")
+}
+
+enum UserItemStatus {
+  active
+  blocked
+  cancelled
+  to_be_cancelled
+}
+
+enum ContractType {
+  BUSINESS
+  USER
 }
 
 model ContractInfo {
-  uuid               String  @id @default(uuid())
+  uuid               String       @id @default(uuid())
+  item_uuid          String
   name               String?
   content            String
   version            String?
   assigned_at        String
-  business_info_uuid String
+  contract_type      ContractType
+  business_info_uuid String?
+  user_info_uuid     String?
+  updated_at         String?
 
-  BusinessInfo     BusinessInfo[]
+  Item         Item          @relation(fields: [item_uuid], references: [uuid])
+  BusinessInfo BusinessInfo? @relation(fields: [business_info_uuid], references: [uuid])
+  UserInfo     UserInfo?     @relation(fields: [user_info_uuid], references: [uuid])
+
   BusinessContract BusinessContract[]
 
   @@map("contract_info")
@@ -289,7 +404,7 @@ enum TransactionStatus {
 
 model Transactions {
   uuid               String            @id @default(uuid())
-  payer_wallet_uuid  String
+  user_item_uuid     String
   favored_uuid       String
   business_info_uuid String
   amount             Int
@@ -299,7 +414,7 @@ model Transactions {
   created_at         String
   updated_at         String
 
-  UserWallet   UserWallet   @relation(fields: [payer_wallet_uuid], references: [uuid])
+  UserItem     UserItem     @relation(fields: [user_item_uuid], references: [uuid])
   UserInfo     UserInfo     @relation(fields: [favored_uuid], references: [uuid])
   BusinessInfo BusinessInfo @relation(fields: [business_info_uuid], references: [uuid])
 
@@ -373,17 +488,17 @@ model Categories {
 }
 
 model Products {
-  uuid           String  @id @default(uuid())
-  category_uuid  String
-  name           String
-  description    String?
-  original_price Int
-  price          Int
-  image          String[]
-  stock          Int
-  weight         String
-  height         String
-  width          String
+  uuid               String   @id @default(uuid())
+  category_uuid      String
+  name               String
+  description        String?
+  original_price     Int
+  price              Int
+  image              String[]
+  stock              Int
+  weight             String
+  height             String
+  width              String
   business_info_uuid String
   created_at         String?
   updated_at         String?

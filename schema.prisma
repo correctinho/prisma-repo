@@ -45,6 +45,7 @@ enum Status {
   inactive
   pending_password
   pending_validation
+  deleted
 }
 
 enum BusinessStatus {
@@ -120,6 +121,8 @@ model BusinessInfo {
   userInfoUuid         String?
   employees            UserInfo[]             @relation("UserBusinessInfo")
   UserItem             UserItem[]
+  BenefitGroups        BenefitGroups[]
+  Employee             Employee[]
 
   @@map("business_data")
 }
@@ -154,7 +157,7 @@ model UserInfo {
   uuid                          String  @id @default(uuid())
   address_uuid                  String?
   document                      String  @unique
-  document2                     String? @unique
+  document2                     String?
   document3                     String?
   full_name                     String
   display_name                  String?
@@ -168,6 +171,7 @@ model UserInfo {
   status                        Status  @default(pending)
   function                      String?
   recommendation_code           String?
+  is_employee                   Boolean @default(false)
   is_authenticated              Boolean @default(false)
   marital_status                String?
   dependents_quantity           Int     @default(0)
@@ -186,8 +190,27 @@ model UserInfo {
   ContractInfo     ContractInfo[]
   BusinessInfo     BusinessInfo?           @relation(fields: [businessInfoUuid], references: [uuid])
   businessInfoUuid String?
+  Employee         Employee[]
 
   @@map("user_info")
+}
+
+model Employee {
+  uuid                  String  @id @default(uuid())
+  user_info_uuid        String
+  business_info_uuid    String
+  company_internal_code String?
+  salary                Int?
+  dependents_quantity   Int?
+  job_title             String?
+  company_owner         Boolean @default(false)
+  created_at            String?
+  updated_at            String?
+
+  UserInfo     UserInfo     @relation(fields: [user_info_uuid], references: [uuid])
+  BusinessInfo BusinessInfo @relation(fields: [business_info_uuid], references: [uuid])
+
+  @@map("employee")
 }
 
 model UserDocumentValidation {
@@ -351,8 +374,8 @@ model UserItem {
   updated_at            String?
   Transactions          Transactions[]
 
-  UserInfo UserInfo     @relation(fields: [user_info_uuid], references: [uuid])
-  Item     Item         @relation(fields: [item_uuid], references: [uuid])
+  UserInfo UserInfo      @relation(fields: [user_info_uuid], references: [uuid])
+  Item     Item          @relation(fields: [item_uuid], references: [uuid])
   Business BusinessInfo? @relation(fields: [business_info_uuid], references: [uuid])
 
   @@map("user_item")
@@ -360,6 +383,7 @@ model UserItem {
 
 enum UserItemStatus {
   active
+  inactive
   blocked
   cancelled
   to_be_cancelled
@@ -479,6 +503,20 @@ model BusinessNotification {
   BusinessUser BusinessUser @relation(fields: [business_user_uuid], references: [uuid])
 
   @@map("business_notifications")
+}
+
+model BenefitGroups {
+  uuid                      String       @id @default(uuid())
+  group_name                String
+  employerItemDetails_uuids String[]
+  value                     Int
+  user_info_uuid            String[]
+  business_info_uuid        String
+  created_at                String?
+  updated_at                String?
+  BusinessInfo              BusinessInfo @relation(fields: [business_info_uuid], references: [uuid])
+
+  @@map("benefit_groups")
 }
 
 model Categories {

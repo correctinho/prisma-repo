@@ -263,7 +263,7 @@ enum ItemType {
 }
 
 model Item {
-  uuid               String  @id @default(uuid())
+  uuid               String       @id @default(uuid())
   name               String
   img_url            String?
   description        String
@@ -338,7 +338,7 @@ model EmployerItemDetails {
   uuid               String  @id @default(uuid())
   item_uuid          String
   business_info_uuid String
-  is_active          Boolean
+  is_active          Boolean @default(false)
   cycle_start_day    Int?
   cycle_end_day      Int?
   created_at         String?
@@ -373,7 +373,7 @@ model UserItem {
   item_uuid             String
   item_name             String
   balance               Int
-  group_uuid    String
+  group_uuid            String
   status                UserItemStatus
   blocked_at            String?
   cancelled_at          String?

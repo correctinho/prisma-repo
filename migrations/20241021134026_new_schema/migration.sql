@@ -2,7 +2,7 @@
 CREATE TYPE "Permissions" AS ENUM ('all', 'sales', 'finances', 'marketing', 'benefits', 'transports', 'allPartners', 'allEmployers');
 
 -- CreateEnum
-CREATE TYPE "Status" AS ENUM ('pending', 'active', 'inactive', 'pending_password', 'pending_validation');
+CREATE TYPE "Status" AS ENUM ('pending', 'active', 'inactive', 'pending_password', 'pending_validation', 'deleted');
 
 -- CreateEnum
 CREATE TYPE "BusinessStatus" AS ENUM ('pending_approval', 'pending_contract', 'active', 'inactive');
@@ -14,7 +14,13 @@ CREATE TYPE "BusinessTypeOptions" AS ENUM ('empregador', 'comercio', 'autonomo_c
 CREATE TYPE "UserDocumentValidationStatus" AS ENUM ('approved', 'denied', 'pending_to_send', 'under_analysis');
 
 -- CreateEnum
-CREATE TYPE "UserItemStatus" AS ENUM ('active', 'blocked', 'cancelled', 'to_be_cancelled');
+CREATE TYPE "ItemCategory" AS ENUM ('pos_pago', 'pre_pago');
+
+-- CreateEnum
+CREATE TYPE "ItemType" AS ENUM ('gratuito', 'programa', 'produto');
+
+-- CreateEnum
+CREATE TYPE "UserItemStatus" AS ENUM ('active', 'inactive', 'blocked', 'cancelled', 'to_be_cancelled');
 
 -- CreateEnum
 CREATE TYPE "ContractType" AS ENUM ('BUSINESS', 'USER');
@@ -79,6 +85,7 @@ CREATE TABLE "business_data" (
     "employer_branch" TEXT,
     "created_at" TEXT NOT NULL,
     "updated_at" TEXT,
+    "userInfoUuid" TEXT,
 
     CONSTRAINT "business_data_pkey" PRIMARY KEY ("uuid")
 );
@@ -103,7 +110,6 @@ CREATE TABLE "addresses" (
 -- CreateTable
 CREATE TABLE "user_info" (
     "uuid" TEXT NOT NULL,
-    "business_info_uuid" TEXT,
     "address_uuid" TEXT,
     "document" TEXT NOT NULL,
     "document2" TEXT,
@@ -120,6 +126,7 @@ CREATE TABLE "user_info" (
     "status" "Status" NOT NULL DEFAULT 'pending',
     "function" TEXT,
     "recommendation_code" TEXT,
+    "is_employee" BOOLEAN NOT NULL DEFAULT false,
     "is_authenticated" BOOLEAN NOT NULL DEFAULT false,
     "marital_status" TEXT,
     "dependents_quantity" INTEGER NOT NULL DEFAULT 0,
@@ -128,6 +135,22 @@ CREATE TABLE "user_info" (
     "updated_at" TEXT,
 
     CONSTRAINT "user_info_pkey" PRIMARY KEY ("uuid")
+);
+
+-- CreateTable
+CREATE TABLE "employee" (
+    "uuid" TEXT NOT NULL,
+    "user_info_uuid" TEXT NOT NULL,
+    "business_info_uuid" TEXT NOT NULL,
+    "company_internal_code" TEXT,
+    "salary" INTEGER,
+    "dependents_quantity" INTEGER,
+    "job_title" TEXT,
+    "company_owner" BOOLEAN NOT NULL DEFAULT false,
+    "created_at" TEXT,
+    "updated_at" TEXT,
+
+    CONSTRAINT "employee_pkey" PRIMARY KEY ("uuid")
 );
 
 -- CreateTable
@@ -167,8 +190,8 @@ CREATE TABLE "items" (
     "name" TEXT NOT NULL,
     "img_url" TEXT,
     "description" TEXT NOT NULL,
-    "item_type" TEXT NOT NULL,
-    "item_category" TEXT NOT NULL,
+    "item_type" "ItemType" NOT NULL,
+    "item_category" "ItemCategory" NOT NULL,
     "parent_uuid" TEXT,
     "business_info_uuid" TEXT,
     "created_at" TEXT NOT NULL,
@@ -225,6 +248,7 @@ CREATE TABLE "employer_item_details" (
     "uuid" TEXT NOT NULL,
     "item_uuid" TEXT NOT NULL,
     "business_info_uuid" TEXT NOT NULL,
+    "is_active" BOOLEAN NOT NULL DEFAULT false,
     "cycle_start_day" INTEGER,
     "cycle_end_day" INTEGER,
     "created_at" TEXT,
@@ -250,9 +274,11 @@ CREATE TABLE "employer_item_registers" (
 CREATE TABLE "user_item" (
     "uuid" TEXT NOT NULL,
     "user_info_uuid" TEXT NOT NULL,
+    "business_info_uuid" TEXT,
     "item_uuid" TEXT NOT NULL,
     "item_name" TEXT NOT NULL,
     "balance" INTEGER NOT NULL,
+    "group_uuid" TEXT NOT NULL,
     "status" "UserItemStatus" NOT NULL,
     "blocked_at" TEXT,
     "cancelled_at" TEXT,
@@ -360,6 +386,20 @@ CREATE TABLE "business_notifications" (
 );
 
 -- CreateTable
+CREATE TABLE "benefit_groups" (
+    "uuid" TEXT NOT NULL,
+    "group_name" TEXT NOT NULL,
+    "employer_item_details_uuid" TEXT NOT NULL,
+    "value" INTEGER NOT NULL,
+    "business_info_uuid" TEXT NOT NULL,
+    "is_default" BOOLEAN NOT NULL,
+    "created_at" TEXT,
+    "updated_at" TEXT,
+
+    CONSTRAINT "benefit_groups_pkey" PRIMARY KEY ("uuid")
+);
+
+-- CreateTable
 CREATE TABLE "categories" (
     "uuid" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -391,6 +431,12 @@ CREATE TABLE "products" (
     CONSTRAINT "products_pkey" PRIMARY KEY ("uuid")
 );
 
+-- CreateTable
+CREATE TABLE "_UserBusinessInfo" (
+    "A" TEXT NOT NULL,
+    "B" TEXT NOT NULL
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "correct_admin_userName_key" ON "correct_admin"("userName");
 
@@ -413,9 +459,6 @@ CREATE UNIQUE INDEX "business_data_email_key" ON "business_data"("email");
 CREATE UNIQUE INDEX "user_info_document_key" ON "user_info"("document");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "user_info_document2_key" ON "user_info"("document2");
-
--- CreateIndex
 CREATE UNIQUE INDEX "user_info_email_key" ON "user_info"("email");
 
 -- CreateIndex
@@ -423,6 +466,12 @@ CREATE UNIQUE INDEX "users_auth_document_key" ON "users_auth"("document");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "users_auth_email_key" ON "users_auth"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "_UserBusinessInfo_AB_unique" ON "_UserBusinessInfo"("A", "B");
+
+-- CreateIndex
+CREATE INDEX "_UserBusinessInfo_B_index" ON "_UserBusinessInfo"("B");
 
 -- AddForeignKey
 ALTER TABLE "business_users" ADD CONSTRAINT "business_users_business_info_uuid_fkey" FOREIGN KEY ("business_info_uuid") REFERENCES "business_data"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -437,13 +486,16 @@ ALTER TABLE "correctAdmin_business" ADD CONSTRAINT "correctAdmin_business_correc
 ALTER TABLE "business_data" ADD CONSTRAINT "business_data_address_uuid_fkey" FOREIGN KEY ("address_uuid") REFERENCES "addresses"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "user_info" ADD CONSTRAINT "user_info_business_info_uuid_fkey" FOREIGN KEY ("business_info_uuid") REFERENCES "business_data"("uuid") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "user_info" ADD CONSTRAINT "user_info_address_uuid_fkey" FOREIGN KEY ("address_uuid") REFERENCES "addresses"("uuid") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "user_info" ADD CONSTRAINT "user_info_user_document_validation_uuid_fkey" FOREIGN KEY ("user_document_validation_uuid") REFERENCES "user_document_validation"("uuid") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "employee" ADD CONSTRAINT "employee_user_info_uuid_fkey" FOREIGN KEY ("user_info_uuid") REFERENCES "user_info"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "employee" ADD CONSTRAINT "employee_business_info_uuid_fkey" FOREIGN KEY ("business_info_uuid") REFERENCES "business_data"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "users_auth" ADD CONSTRAINT "users_auth_user_info_uuid_fkey" FOREIGN KEY ("user_info_uuid") REFERENCES "user_info"("uuid") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -485,6 +537,12 @@ ALTER TABLE "user_item" ADD CONSTRAINT "user_item_user_info_uuid_fkey" FOREIGN K
 ALTER TABLE "user_item" ADD CONSTRAINT "user_item_item_uuid_fkey" FOREIGN KEY ("item_uuid") REFERENCES "items"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "user_item" ADD CONSTRAINT "user_item_business_info_uuid_fkey" FOREIGN KEY ("business_info_uuid") REFERENCES "business_data"("uuid") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_item" ADD CONSTRAINT "user_item_group_uuid_fkey" FOREIGN KEY ("group_uuid") REFERENCES "benefit_groups"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "contract_info" ADD CONSTRAINT "contract_info_item_uuid_fkey" FOREIGN KEY ("item_uuid") REFERENCES "items"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -518,7 +576,19 @@ ALTER TABLE "user_notification" ADD CONSTRAINT "user_notification_user_info_uuid
 ALTER TABLE "business_notifications" ADD CONSTRAINT "business_notifications_business_user_uuid_fkey" FOREIGN KEY ("business_user_uuid") REFERENCES "business_users"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "benefit_groups" ADD CONSTRAINT "benefit_groups_business_info_uuid_fkey" FOREIGN KEY ("business_info_uuid") REFERENCES "business_data"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "benefit_groups" ADD CONSTRAINT "benefit_groups_employer_item_details_uuid_fkey" FOREIGN KEY ("employer_item_details_uuid") REFERENCES "employer_item_details"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "products" ADD CONSTRAINT "products_business_info_uuid_fkey" FOREIGN KEY ("business_info_uuid") REFERENCES "business_data"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "products" ADD CONSTRAINT "products_category_uuid_fkey" FOREIGN KEY ("category_uuid") REFERENCES "categories"("uuid") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "_UserBusinessInfo" ADD CONSTRAINT "_UserBusinessInfo_A_fkey" FOREIGN KEY ("A") REFERENCES "business_data"("uuid") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "_UserBusinessInfo" ADD CONSTRAINT "_UserBusinessInfo_B_fkey" FOREIGN KEY ("B") REFERENCES "user_info"("uuid") ON DELETE CASCADE ON UPDATE CASCADE;

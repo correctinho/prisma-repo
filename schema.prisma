@@ -160,20 +160,15 @@ model UserInfo {
   document3                     String?
   full_name                     String
   display_name                  String?
-  internal_company_code         String?
   gender                        String?
   email                         String? @unique
   date_of_birth                 String
   phone                         String?
-  salary                        Int?
-  company_owner                 Boolean @default(false)
   status                        Status  @default(pending)
-  function                      String?
   recommendation_code           String?
   is_employee                   Boolean @default(false)
   is_authenticated              Boolean @default(false)
   marital_status                String?
-  dependents_quantity           Int     @default(0)
   user_document_validation_uuid String?
   created_at                    String?
   updated_at                    String?

@@ -542,13 +542,17 @@ model Categories {
 }
 
 model Products {
-  uuid               String   @id @default(uuid())
+  uuid               String  @id @default(uuid())
   category_uuid      String
+  ean_code           String?
+  brand              String?
   name               String
   description        String?
   original_price     Int
-  price              Int
-  image              String[]
+  promotional_price  Int
+  discount           Int
+  image_url          String
+  is_mega_promotion  Boolean @default(false)
   stock              Int
   weight             String
   height             String
@@ -561,4 +565,26 @@ model Products {
   Categories   Categories   @relation(fields: [category_uuid], references: [uuid])
 
   @@map("products")
+}
+
+model EanProducts {
+  uuid         String  @id @default(uuid())
+  ean_code     String  @unique
+  name         String?
+  image_url    String?
+  brand        String?
+  description  String?
+  max_price    Int?
+  min_price    Int?
+  gross_weight Int?
+  net_weight   Int?
+  height       Float?
+  length       Float?
+  width        Float?
+  grpc_code    String?
+  ncm_code     String?
+  origin       String?
+  created_at   String?
+
+  @@map("ean_products")
 }

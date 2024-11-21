@@ -542,7 +542,7 @@ model Categories {
 }
 
 model Products {
-  uuid               String  @id @default(uuid())
+  uuid               String   @id @default(uuid())
   category_uuid      String
   ean_code           String?
   brand              String?
@@ -551,13 +551,14 @@ model Products {
   original_price     Int
   promotional_price  Int
   discount           Int
-  image_url          String
-  is_mega_promotion  Boolean @default(false)
+  image_urls         String[]
+  is_mega_promotion  Boolean  @default(false)
   stock              Int
-  weight             String
-  height             String
-  width              String
+  weight             String?
+  height             String?
+  width              String?
   business_info_uuid String
+  is_active          Boolean @default(true)
   created_at         String?
   updated_at         String?
 

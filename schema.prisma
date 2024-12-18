@@ -17,13 +17,14 @@ datasource db {
 }
 
 model CorrectAdmin {
-  uuid                 String                 @id @default(uuid())
-  name                 String
-  userName             String                 @unique
-  email                String                 @unique
-  password             String
-  isAdmin              Boolean                @default(true)
-  CorrectAdminBusiness CorrectAdminBusiness[]
+  uuid                    String                    @id @default(uuid())
+  name                    String
+  userName                String                    @unique
+  email                   String                    @unique
+  password                String
+  isAdmin                 Boolean                   @default(true)
+  CorrectAdminBusiness    CorrectAdminBusiness[]
+  CorrectUserBusinessInfo CorrectUserBusinessInfo[]
 
   @@map("correct_admin")
 }
@@ -106,22 +107,23 @@ model BusinessInfo {
 
   Address Address? @relation(fields: [address_uuid], references: [uuid])
 
-  BusinessUser         BusinessUser[]
-  Transactions         Transactions[]
-  BusinessConfig       BusinessConfig[]
-  Contracts            ContractInfo[]
-  BusinessContract     BusinessContract[]
-  Products             Products[]
-  Item                 Item[]
-  CorrectAdminBusiness CorrectAdminBusiness[]
-  BusinessinfoBranch   BusinessinfoBranch[]
-  BusinessInfoItem     BusinessInfoItem[]
-  EmployerItemDetails  EmployerItemDetails[]
-  userInfoUuid         String?
-  employees            UserInfo[]             @relation("UserBusinessInfo")
-  UserItem             UserItem[]
-  BenefitGroups        BenefitGroups[]
-  Employee             Employee[]
+  BusinessUser            BusinessUser[]
+  Transactions            Transactions[]
+  Contracts               ContractInfo[]
+  BusinessContract        BusinessContract[]
+  Products                Products[]
+  Item                    Item[]
+  CorrectAdminBusiness    CorrectAdminBusiness[]
+  BusinessinfoBranch      BusinessinfoBranch[]
+  BusinessInfoItem        BusinessInfoItem[]
+  EmployerItemDetails     EmployerItemDetails[]
+  userInfoUuid            String?
+  employees               UserInfo[]                @relation("UserBusinessInfo")
+  UserItem                UserItem[]
+  BenefitGroups           BenefitGroups[]
+  Employee                Employee[]
+  PartnerConfig           PartnerConfig[]
+  CorrectUserBusinessInfo CorrectUserBusinessInfo[]
 
   @@map("business_data")
 }
@@ -471,19 +473,33 @@ model BusinessRecommendation {
   @@map("business_recommendations")
 }
 
-model BusinessConfig {
-  uuid                     String   @id @default(uuid())
-  business_info_uuid       String
-  admin_tax                Int
-  marketing_tax            Int
-  block_list               String[] @default([])
-  cycle_start_date         String?
-  cycle_end_date           String?
-  cycle_paper_payment_date String?
+enum SalesType {
+  presencial
+  delivery
+  ambos
+}
+
+model PartnerConfig {
+  uuid               String     @id @default(uuid())
+  business_info_uuid String
+  main_branch        String
+  partner_category   String[]
+  items_uuid         String[]
+  admin_tax          Int?
+  marketing_tax      Int?
+  use_marketing      Boolean
+  market_place_tax   Int?
+  use_market_place   Boolean
+  title              String?
+  phone              String?
+  description        String?
+  sales_type         SalesType?
+  created_at         String?
+  updated_at         String?
 
   BusinessInfo BusinessInfo @relation(fields: [business_info_uuid], references: [uuid])
 
-  @@map("business_config")
+  @@map("partner_config")
 }
 
 model UserNotification {
@@ -558,7 +574,7 @@ model Products {
   height             String?
   width              String?
   business_info_uuid String
-  is_active          Boolean @default(true)
+  is_active          Boolean  @default(true)
   created_at         String?
   updated_at         String?
 
@@ -588,4 +604,16 @@ model EanProducts {
   created_at   String?
 
   @@map("ean_products")
+}
+
+model CorrectUserBusinessInfo {
+  uuid               String  @id @default(uuid())
+  business_info_uuid String
+  correct_admin_uuid String?
+  created_at         String
+
+  Businessinfo BusinessInfo  @relation(fields: [business_info_uuid], references: [uuid])
+  CorrectAdmin CorrectAdmin? @relation(fields: [correct_admin_uuid], references: [uuid])
+
+  @@map("correct_user_business")
 }

@@ -481,7 +481,7 @@ enum SalesType {
 
 model PartnerConfig {
   uuid               String     @id @default(uuid())
-  business_info_uuid String
+  business_info_uuid String     @unique
   main_branch        String
   partner_category   String[]
   items_uuid         String[]
@@ -494,6 +494,8 @@ model PartnerConfig {
   phone              String?
   description        String?
   sales_type         SalesType?
+  latitude           Float?
+  longitude          Float?
   created_at         String?
   updated_at         String?
 

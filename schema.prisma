@@ -73,6 +73,7 @@ model BusinessUser {
 
   BusinessInfo         BusinessInfo           @relation(fields: [business_info_uuid], references: [uuid])
   BusinessNotification BusinessNotification[]
+  Transactions         Transactions[]
 
   @@map("business_users")
 }
@@ -124,6 +125,7 @@ model BusinessInfo {
   Employee                Employee[]
   PartnerConfig           PartnerConfig[]
   CorrectUserBusinessInfo CorrectUserBusinessInfo[]
+  BusinessAccount         BusinessAccount[]
 
   @@map("business_data")
 }
@@ -370,7 +372,7 @@ model UserItem {
   item_uuid             String
   item_name             String
   balance               Int
-  group_uuid            String
+  group_uuid            String?
   status                UserItemStatus
   blocked_at            String?
   cancelled_at          String?
@@ -382,12 +384,43 @@ model UserItem {
   updated_at            String?
   Transactions          Transactions[]
 
-  UserInfo      UserInfo      @relation(fields: [user_info_uuid], references: [uuid])
-  Item          Item          @relation(fields: [item_uuid], references: [uuid])
-  Business      BusinessInfo? @relation(fields: [business_info_uuid], references: [uuid])
-  BenefitGroups BenefitGroups @relation(fields: [group_uuid], references: [uuid])
+  UserInfo        UserInfo          @relation(fields: [user_info_uuid], references: [uuid])
+  Item            Item              @relation(fields: [item_uuid], references: [uuid])
+  Business        BusinessInfo?     @relation(fields: [business_info_uuid], references: [uuid])
+  BenefitGroups   BenefitGroups?    @relation(fields: [group_uuid], references: [uuid])
+  UserItemHistory UserItemHistory[]
 
   @@map("user_item")
+}
+
+model UserItemHistory {
+  uuid                       String            @id @default(uuid())
+  user_item_uuid             String // FK para UserItem (o benefício específico)
+  event_type                 UserItemEventType // Tipo do evento
+  amount                     Int // Valor da movimentação (+/-)
+  balance_before             Int // Saldo antes
+  balance_after              Int // Saldo depois
+  related_transaction_uuid   String? // FK opcional para Transactions (gasto ou cashback de uma transação)
+  related_benefit_group_uuid String? // FK opcional para BenefitGroups (crédito inicial do grupo)
+  created_at                 DateTime          @default(now())
+
+  UserItem            UserItem       @relation(fields: [user_item_uuid], references: [uuid])
+  // Relação opcional com Transações
+  RelatedTransaction  Transactions?  @relation(fields: [related_transaction_uuid], references: [uuid])
+  // Relação opcional com Grupos de Benefício
+  RelatedBenefitGroup BenefitGroups? @relation(fields: [related_benefit_group_uuid], references: [uuid])
+
+  @@map("user_item_history")
+}
+
+enum UserItemEventType {
+  BENEFIT_CREDITED // Crédito inicial ou recorrente do benefício
+  ITEM_SPENT // Gasto do saldo em uma transação
+  CASHBACK_RECEIVED // Cashback creditado neste item específico
+  REFUND_RECEIVED // Reembolso creditado neste item
+  BALANCE_ADJUSTMENT // Ajuste manual de saldo
+  BENEFIT_EXPIRED // Saldo expirado (se aplicável)
+  OTHER // Outros
 }
 
 enum UserItemStatus {
@@ -437,25 +470,44 @@ model BusinessContract {
 
 enum TransactionStatus {
   pending
-  sucess
+  success
   fail
+  cancelled
+}
+
+enum TransactionType {
+  P2P_TRANSFER // Transferência entre usuários
+  POS_PAYMENT // Pagamento para comércio via PDV/QR Code
+  ECOMMERCE_PAYMENT // Pagamento para comércio online
+  CASH_IN_PIX // Depósito via Pix (se for registrar aqui)
+  CASH_OUT // Saque (se for registrar aqui)
+  BENEFIT_CREDIT // Crédito de benefício pela empresa (se for registrar aqui)
+  // Adicionar outros tipos conforme sua necessidade
 }
 
 model Transactions {
-  uuid               String            @id @default(uuid())
-  user_item_uuid     String
-  favored_uuid       String
-  business_info_uuid String
-  amount             Int
-  fee_amount         Int
-  cashback           Int
-  status             TransactionStatus
-  created_at         String
-  updated_at         String
+  uuid                       String            @id @default(uuid())
+  user_item_uuid             String?
+  favored_user_uuid          String?
+  favored_business_info_uuid String?
+  amount                     Int
+  fee_amount                 Int
+  cashback                   Int
+  description                String?
+  status                     TransactionStatus
+  transaction_type           TransactionType
+  partner_user_uuid          String?
+  created_at                 String
+  updated_at                 String
 
-  UserItem     UserItem     @relation(fields: [user_item_uuid], references: [uuid])
-  UserInfo     UserInfo     @relation(fields: [favored_uuid], references: [uuid])
-  BusinessInfo BusinessInfo @relation(fields: [business_info_uuid], references: [uuid])
+  UserItem               UserItem?                @relation(fields: [user_item_uuid], references: [uuid])
+  UserInfo               UserInfo?                @relation(fields: [favored_user_uuid], references: [uuid])
+  BusinessInfo           BusinessInfo?            @relation(fields: [favored_business_info_uuid], references: [uuid])
+  PartnerUser            BusinessUser?            @relation(fields: [partner_user_uuid], references: [uuid])
+  PartnerCreditSpend     PartnerCreditSpend[]
+  BusinessAccountHistory BusinessAccountHistory[]
+  UserItemHistory        UserItemHistory[]
+  CorrectAccountHistory  CorrectAccountHistory[]
 
   @@map("transactions")
 }
@@ -471,6 +523,122 @@ model BusinessRecommendation {
   social_media  String
 
   @@map("business_recommendations")
+}
+
+enum BusinessAccountStatus {
+  active
+  inactive
+}
+
+model CorrectAccount {
+  uuid                  String                  @id @default(uuid())
+  balance               Int
+  status                BusinessAccountStatus
+  created_at            String
+  updated_at            String?
+  CorrectAccountHistory CorrectAccountHistory[]
+
+  @@map("correct_account")
+}
+
+enum CorrectAccountEventType {
+  PLATFORM_FEE_COLLECTED // Taxa da plataforma coletada de uma transação
+  PAYOUT_SENT // Pagamento enviado (ex: para conta bancária)
+  MANUAL_ADJUSTMENT // Ajuste manual (crédito ou débito)
+  SERVICE_COST // Custo de serviço interno
+  OTHER // Outros tipos
+}
+
+model CorrectAccountHistory {
+  uuid                     String                  @id @default(uuid())
+  correct_account_uuid     String // FK para CorrectAccount
+  event_type               CorrectAccountEventType // Tipo do evento que causou a mudança
+  amount                   Int // Valor da movimentação (+/-)
+  balance_before           Int // Saldo antes da movimentação
+  balance_after            Int // Saldo depois da movimentação
+  related_transaction_uuid String? // FK opcional para Transactions (ex: taxa de uma transação)
+  created_at               DateTime                @default(now())
+
+  CorrectAccount     CorrectAccount @relation(fields: [correct_account_uuid], references: [uuid])
+  RelatedTransaction Transactions?  @relation(fields: [related_transaction_uuid], references: [uuid])
+
+  @@map("correct_account_history")
+}
+
+model BusinessAccount {
+  uuid               String                @id @default(uuid())
+  balance            Int
+  business_info_uuid String
+  status             BusinessAccountStatus
+  created_at         String
+  updated_at         String?
+
+  BusinessInfo           BusinessInfo             @relation(fields: [business_info_uuid], references: [uuid])
+  BusinessAccountHistory BusinessAccountHistory[]
+
+  @@map("business_account")
+}
+
+model BusinessAccountHistory {
+  uuid                     String                   @id @default(uuid())
+  business_account_uuid    String // FK para BusinessAccount
+  event_type               BusinessAccountEventType // Tipo do evento
+  amount                   Int // Valor da movimentação (+/-)
+  balance_before           Int // Saldo antes
+  balance_after            Int // Saldo depois
+  related_transaction_uuid String? // FK opcional para Transactions (pagamento recebido, taxa, etc.)
+  created_at               DateTime                 @default(now())
+
+  BusinessAccount    BusinessAccount @relation(fields: [business_account_uuid], references: [uuid])
+  // Relação opcional com Transações
+  RelatedTransaction Transactions?   @relation(fields: [related_transaction_uuid], references: [uuid])
+
+  @@map("business_account_history")
+}
+
+enum BusinessAccountEventType {
+  PAYMENT_RECEIVED // Pagamento recebido (valor líquido após taxas/cashback)
+  PLATFORM_FEE_CHARGED // Taxa da plataforma debitada (se debitada separadamente) - Alternativamente, apenas registrar o líquido recebido.
+  PARTNER_CASHBACK_COST // Custo do cashback oferecido pelo parceiro (se debitado separadamente) - Alternativamente, apenas registrar o líquido recebido.
+  PAYOUT_REQUESTED // Solicitação de saque
+  PAYOUT_PROCESSED // Saque processado/enviado
+  REFUND_ISSUED // Reembolso emitido para um cliente
+  MANUAL_ADJUSTMENT // Ajuste manual
+  OTHER // Outros
+}
+
+model PartnerCredit {
+  uuid                      String               @id @default(uuid())
+  business_account_uuid     String
+  original_transaction_uuid String
+  balance                   Int
+  spent_amount              Int                  @default(0)
+  status                    PartnerCreditStatus
+  availability_date         DateTime // Data de liquidação
+  created_at                DateTime             @default(now())
+  updated_at                DateTime             @updatedAt
+  PartnerCreditSpend        PartnerCreditSpend[]
+
+  @@map("partner_credits")
+}
+
+model PartnerCreditSpend {
+  uuid                      String   @id @default(uuid())
+  partner_credit_uuid       String // FK para PartnerCredit (Qual crédito foi fonte)
+  spending_transaction_uuid String // FK para Transactions (Qual transação consumiu)
+  amount_spent              Int // Quanto foi gasto NESTA movimentação específica
+  created_at                DateTime @default(now())
+
+  CreditSource        PartnerCredit @relation(fields: [partner_credit_uuid], references: [uuid])
+  SpendingTransaction Transactions  @relation(fields: [spending_transaction_uuid], references: [uuid])
+
+  @@map("partner_credit_spends")
+}
+
+// Enum para Status do Crédito (Simplificado)
+enum PartnerCreditStatus {
+  PENDING // Aguardando data de disponibilidade (pode ter spent_amount > 0)
+  SETTLED // Já foi liquidado (o valor restante foi movido para BusinessAccount.balance)
 }
 
 enum SalesType {
@@ -494,6 +662,7 @@ model PartnerConfig {
   phone              String?
   description        String?
   sales_type         SalesType?
+  cashback_tax       Int        @default(0)
   latitude           Float?
   longitude          Float?
   created_at         String?
@@ -540,9 +709,10 @@ model BenefitGroups {
   created_at                 String?
   updated_at                 String?
 
-  BusinessInfo  BusinessInfo        @relation(fields: [business_info_uuid], references: [uuid])
-  EmployerItems EmployerItemDetails @relation(fields: [employer_item_details_uuid], references: [uuid])
-  UserItem      UserItem[]
+  BusinessInfo    BusinessInfo        @relation(fields: [business_info_uuid], references: [uuid])
+  EmployerItems   EmployerItemDetails @relation(fields: [employer_item_details_uuid], references: [uuid])
+  UserItem        UserItem[]
+  UserItemHistory UserItemHistory[]
 
   @@map("benefit_groups")
 }

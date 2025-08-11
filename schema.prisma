@@ -490,13 +490,13 @@ model Transactions {
   user_item_uuid             String?
   favored_user_uuid          String?
   favored_business_info_uuid String?
-  original_price             Int
-  discount_percentage        Int
-  net_price                  Int
+  original_price             Int               @default(0)
+  discount_percentage        Int               @default(0)
+  net_price                  Int               @default(0)
   fee_percentage             Int?              @default(0) // Percentual da taxa aplicada
-  fee_amount                 Int?
+  fee_amount                 Int?              @default(0)
   partner_credit_amount      Int
-  cashback                   Int
+  cashback                   Int               @default(0)
   description                String?
   status                     TransactionStatus
   transaction_type           TransactionType

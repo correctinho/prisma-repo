@@ -15,6 +15,6 @@ DROP INDEX "_UserBusinessInfo_AB_unique";
 
 -- AlterTable
 ALTER TABLE "transactions" DROP COLUMN "amount",
-ADD COLUMN     "discount_value" INTEGER NOT NULL,
-ADD COLUMN     "net_price" INTEGER NOT NULL,
-ADD COLUMN     "original_price" INTEGER NOT NULL;
+ADD COLUMN     "discount_value" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "net_price" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "original_price" INTEGER NOT NULL DEFAULT 0;

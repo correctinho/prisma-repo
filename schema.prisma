@@ -490,20 +490,25 @@ model Transactions {
   user_item_uuid             String?
   favored_user_uuid          String?
   favored_business_info_uuid String?
-  amount                     Int
-  fee_amount                 Int
+  original_price             Int
+  discount_percentage        Int
+  net_price                  Int
+  fee_percentage             Int?              @default(0) // Percentual da taxa aplicada
+  fee_amount                 Int?
+  partner_credit_amount      Int
   cashback                   Int
   description                String?
   status                     TransactionStatus
   transaction_type           TransactionType
-  partner_user_uuid          String?
+  favored_partner_user_uuid  String?
+  paid_at                    String?
   created_at                 String
-  updated_at                 String
+  updated_at                 String?
 
   UserItem               UserItem?                @relation(fields: [user_item_uuid], references: [uuid])
   UserInfo               UserInfo?                @relation(fields: [favored_user_uuid], references: [uuid])
   BusinessInfo           BusinessInfo?            @relation(fields: [favored_business_info_uuid], references: [uuid])
-  PartnerUser            BusinessUser?            @relation(fields: [partner_user_uuid], references: [uuid])
+  PartnerUser            BusinessUser?            @relation(fields: [favored_partner_user_uuid], references: [uuid])
   PartnerCreditSpend     PartnerCreditSpend[]
   BusinessAccountHistory BusinessAccountHistory[]
   UserItemHistory        UserItemHistory[]

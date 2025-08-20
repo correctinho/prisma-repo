@@ -722,6 +722,7 @@ model BenefitGroups {
   @@map("benefit_groups")
 }
 
+//**********ECOMMERCE MODELS************
 model Categories {
   uuid        String     @id @default(uuid())
   name        String

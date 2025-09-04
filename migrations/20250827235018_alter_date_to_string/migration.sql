@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "carts" ALTER COLUMN "created_at" DROP DEFAULT,
+ALTER COLUMN "created_at" SET DATA TYPE TEXT,
+ALTER COLUMN "updated_at" DROP NOT NULL,
+ALTER COLUMN "updated_at" SET DATA TYPE TEXT;

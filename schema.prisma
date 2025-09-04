@@ -74,6 +74,11 @@ model BusinessUser {
   BusinessInfo         BusinessInfo           @relation(fields: [business_info_uuid], references: [uuid])
   BusinessNotification BusinessNotification[]
   Transactions         Transactions[]
+  Products             Products[]
+  CreatedProducts      Products[]             @relation("CreatedProducts")
+  UpdatedProducts      Products[]             @relation("UpdatedProducts")
+  DeletedProducts      Products[]             @relation("DeletedProducts")
+  ProductChanges       ProductHistory[]
 
   @@map("business_users")
 }
@@ -126,6 +131,7 @@ model BusinessInfo {
   PartnerConfig           PartnerConfig[]
   CorrectUserBusinessInfo CorrectUserBusinessInfo[]
   BusinessAccount         BusinessAccount[]
+  Cart                    Cart[]
 
   @@map("business_data")
 }
@@ -187,6 +193,7 @@ model UserInfo {
   UserItem         UserItem[]
   ContractInfo     ContractInfo[]
   Employee         Employee[]
+  Cart             Cart[]
 
   @@map("user_info")
 }
@@ -735,9 +742,16 @@ model Categories {
   @@map("categories")
 }
 
+enum ProductType {
+  PHYSICAL // Para bens físicos que têm estoque e dimensões
+  SERVICE // Para serviços que não têm estoque
+  BOOKABLE_SERVICE
+}
+
 model Products {
-  uuid               String   @id @default(uuid())
+  uuid               String      @id @default(uuid())
   category_uuid      String
+  product_type       ProductType @default(PHYSICAL)
   ean_code           String?
   brand              String?
   name               String
@@ -746,20 +760,49 @@ model Products {
   promotional_price  Int
   discount           Int
   image_urls         String[]
-  is_mega_promotion  Boolean  @default(false)
+  is_mega_promotion  Boolean     @default(false)
   stock              Int
   weight             String?
   height             String?
   width              String?
   business_info_uuid String
-  is_active          Boolean  @default(true)
+  is_active          Boolean     @default(true)
+  created_by_uuid    String // UUID do BusinessUser que CRIOU o produto
+  updated_by_uuid    String // UUID do BusinessUser que fez a ÚLTIMA alteração
+  deleted_at         DateTime?
+  deleted_by_uuid    String?
   created_at         String?
   updated_at         String?
 
-  Businessinfo BusinessInfo @relation(fields: [business_info_uuid], references: [uuid])
-  Categories   Categories   @relation(fields: [category_uuid], references: [uuid])
+  Businessinfo     BusinessInfo     @relation(fields: [business_info_uuid], references: [uuid])
+  Categories       Categories       @relation(fields: [category_uuid], references: [uuid])
+  CreatedBy        BusinessUser     @relation("CreatedProducts", fields: [created_by_uuid], references: [uuid])
+  UpdatedBy        BusinessUser     @relation("UpdatedProducts", fields: [updated_by_uuid], references: [uuid])
+  DeletedBy        BusinessUser?    @relation("DeletedProducts", fields: [deleted_by_uuid], references: [uuid])
+  BusinessUser     BusinessUser?    @relation(fields: [businessUserUuid], references: [uuid])
+  businessUserUuid String?
+  ProductHistory   ProductHistory[]
+  CartItem         CartItem[]
 
   @@map("products")
+}
+
+model ProductHistory {
+  uuid            String @id @default(uuid())
+  product_uuid    String
+  changed_by_uuid String // UUID do BusinessUser que fez a alteração
+
+  field_changed String // O campo que foi alterado (ex: "stock", "price", "image_deleted")
+  old_value     String? // O valor antigo do campo
+  new_value     String? // O novo valor do campo
+
+  changed_at DateTime @default(now())
+
+  // Relacionamentos
+  Product   Products     @relation(fields: [product_uuid], references: [uuid])
+  ChangedBy BusinessUser @relation(fields: [changed_by_uuid], references: [uuid])
+
+  @@map("product_history")
 }
 
 model EanProducts {
@@ -782,6 +825,38 @@ model EanProducts {
   created_at   String?
 
   @@map("ean_products")
+}
+
+model Cart {
+  uuid               String   @id @default(uuid())
+  user_info_uuid     String
+  business_info_uuid String // Chave para garantir que o carrinho é de um único parceiro.
+  created_at         String
+  updated_at         String?
+
+  // Relacionamentos
+  user      UserInfo     @relation(fields: [user_info_uuid], references: [uuid])
+  business  BusinessInfo @relation(fields: [business_info_uuid], references: [uuid])
+  cartItems CartItem[] // Um carrinho pode ter vários itens.
+
+  // Garante que um usuário só pode ter um carrinho ativo por parceiro.
+  @@unique([user_info_uuid, business_info_uuid])
+  @@map("carts")
+}
+
+model CartItem {
+  uuid         String @id @default(uuid())
+  cart_uuid    String
+  product_uuid String
+  quantity     Int    @default(1)
+
+  // Relacionamentos
+  cart    Cart     @relation(fields: [cart_uuid], references: [uuid])
+  product Products @relation(fields: [product_uuid], references: [uuid])
+
+  // Garante que um produto só apareça uma vez por carrinho (a quantidade é que muda).
+  @@unique([cart_uuid, product_uuid])
+  @@map("cart_items")
 }
 
 model CorrectUserBusinessInfo {

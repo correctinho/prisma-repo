@@ -828,7 +828,7 @@ model EanProducts {
 }
 
 model Cart {
-  uuid               String   @id @default(uuid())
+  uuid               String  @id @default(uuid())
   user_info_uuid     String
   business_info_uuid String // Chave para garantir que o carrinho é de um único parceiro.
   created_at         String
@@ -845,17 +845,17 @@ model Cart {
 }
 
 model CartItem {
-  uuid         String @id @default(uuid())
+  uuid         String    @id @default(uuid())
   cart_uuid    String
   product_uuid String
-  quantity     Int    @default(1)
-
+  quantity     Int       @default(1)
+  deleted_at   DateTime?
   // Relacionamentos
-  cart    Cart     @relation(fields: [cart_uuid], references: [uuid])
-  product Products @relation(fields: [product_uuid], references: [uuid])
+  cart         Cart      @relation(fields: [cart_uuid], references: [uuid])
+  product      Products  @relation(fields: [product_uuid], references: [uuid])
 
   // Garante que um produto só apareça uma vez por carrinho (a quantidade é que muda).
-  @@unique([cart_uuid, product_uuid])
+  @@unique([cart_uuid, product_uuid], name: "cart_product_unique")
   @@map("cart_items")
 }
 

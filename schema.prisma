@@ -74,7 +74,6 @@ model BusinessUser {
   BusinessInfo         BusinessInfo           @relation(fields: [business_info_uuid], references: [uuid])
   BusinessNotification BusinessNotification[]
   Transactions         Transactions[]
-  Products             Products[]
   CreatedProducts      Products[]             @relation("CreatedProducts")
   UpdatedProducts      Products[]             @relation("UpdatedProducts")
   DeletedProducts      Products[]             @relation("DeletedProducts")
@@ -779,8 +778,6 @@ model Products {
   CreatedBy        BusinessUser     @relation("CreatedProducts", fields: [created_by_uuid], references: [uuid])
   UpdatedBy        BusinessUser     @relation("UpdatedProducts", fields: [updated_by_uuid], references: [uuid])
   DeletedBy        BusinessUser?    @relation("DeletedProducts", fields: [deleted_by_uuid], references: [uuid])
-  BusinessUser     BusinessUser?    @relation(fields: [businessUserUuid], references: [uuid])
-  businessUserUuid String?
   ProductHistory   ProductHistory[]
   CartItem         CartItem[]
 

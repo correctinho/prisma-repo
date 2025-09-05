@@ -6,9 +6,9 @@
 
 */
 -- AlterTable
-ALTER TABLE "products" ADD COLUMN     "businessUserUuid" TEXT,
-ADD COLUMN     "created_by_uuid" TEXT NOT NULL,
-ADD COLUMN     "updated_by_uuid" TEXT NOT NULL;
+ALTER TABLE "products" ADD COLUMN     "businessUserUuid" TEXT;
+ALTER TABLE "products" ADD COLUMN     "created_by_uuid" TEXT;
+ALTER TABLE "products" ADD COLUMN     "updated_by_uuid" TEXT;
 
 -- CreateTable
 CREATE TABLE "product_history" (

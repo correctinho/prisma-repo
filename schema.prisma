@@ -113,7 +113,6 @@ model BusinessInfo {
   Address Address? @relation(fields: [address_uuid], references: [uuid])
 
   BusinessUser            BusinessUser[]
-  Transactions            Transactions[]
   Contracts               ContractInfo[]
   BusinessContract        BusinessContract[]
   Products                Products[]
@@ -131,6 +130,9 @@ model BusinessInfo {
   CorrectUserBusinessInfo CorrectUserBusinessInfo[]
   BusinessAccount         BusinessAccount[]
   Cart                    Cart[]
+  FavoredTransactions     Transactions[]            @relation("FavoredTransactions")
+  // Lista de transações onde esta empresa foi a PAGADORA
+  PayerTransactions       Transactions[]            @relation("PayerTransactions")
 
   @@map("business_data")
 }
@@ -496,6 +498,7 @@ model Transactions {
   user_item_uuid             String?
   favored_user_uuid          String?
   favored_business_info_uuid String?
+  payer_business_info_uuid   String?
   original_price             Int               @default(0)
   discount_percentage        Int               @default(0)
   net_price                  Int               @default(0)
@@ -513,8 +516,9 @@ model Transactions {
 
   UserItem               UserItem?                @relation(fields: [user_item_uuid], references: [uuid])
   UserInfo               UserInfo?                @relation(fields: [favored_user_uuid], references: [uuid])
-  BusinessInfo           BusinessInfo?            @relation(fields: [favored_business_info_uuid], references: [uuid])
+  BusinessInfo           BusinessInfo?            @relation("FavoredTransactions", fields: [favored_business_info_uuid], references: [uuid])
   PartnerUser            BusinessUser?            @relation(fields: [favored_partner_user_uuid], references: [uuid])
+  PayerBusiness          BusinessInfo?            @relation("PayerTransactions", fields: [payer_business_info_uuid], references: [uuid])
   PartnerCreditSpend     PartnerCreditSpend[]
   BusinessAccountHistory BusinessAccountHistory[]
   UserItemHistory        UserItemHistory[]
@@ -773,13 +777,13 @@ model Products {
   created_at         String?
   updated_at         String?
 
-  Businessinfo     BusinessInfo     @relation(fields: [business_info_uuid], references: [uuid])
-  Categories       Categories       @relation(fields: [category_uuid], references: [uuid])
-  CreatedBy        BusinessUser     @relation("CreatedProducts", fields: [created_by_uuid], references: [uuid])
-  UpdatedBy        BusinessUser     @relation("UpdatedProducts", fields: [updated_by_uuid], references: [uuid])
-  DeletedBy        BusinessUser?    @relation("DeletedProducts", fields: [deleted_by_uuid], references: [uuid])
-  ProductHistory   ProductHistory[]
-  CartItem         CartItem[]
+  Businessinfo   BusinessInfo     @relation(fields: [business_info_uuid], references: [uuid])
+  Categories     Categories       @relation(fields: [category_uuid], references: [uuid])
+  CreatedBy      BusinessUser     @relation("CreatedProducts", fields: [created_by_uuid], references: [uuid])
+  UpdatedBy      BusinessUser     @relation("UpdatedProducts", fields: [updated_by_uuid], references: [uuid])
+  DeletedBy      BusinessUser?    @relation("DeletedProducts", fields: [deleted_by_uuid], references: [uuid])
+  ProductHistory ProductHistory[]
+  CartItem       CartItem[]
 
   @@map("products")
 }

@@ -66,6 +66,7 @@ model BusinessUser {
   user_name          String?
   password           String
   function           String?
+  transaction_pin    String?
   permissions        Permissions[] @default([all])
   status             Status        @default(pending_password)
   created_at         String?
@@ -243,12 +244,13 @@ enum UserDocumentValidationStatus {
 }
 
 model UserAuth {
-  uuid           String  @id @default(uuid())
-  user_info_uuid String?
-  document       String  @unique
-  email          String  @unique
-  password       String
-  is_active      Boolean @default(true)
+  uuid            String  @id @default(uuid())
+  user_info_uuid  String?
+  document        String  @unique
+  email           String  @unique
+  password        String
+  transaction_pin String?
+  is_active       Boolean @default(true)
 
   created_at String?
   updated_at String?

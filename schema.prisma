@@ -400,6 +400,7 @@ model UserItem {
   BenefitGroups   BenefitGroups?    @relation(fields: [group_uuid], references: [uuid])
   UserItemHistory UserItemHistory[]
 
+  @@unique([user_info_uuid, business_info_uuid, item_uuid])
   @@map("user_item")
 }
 
@@ -509,6 +510,7 @@ model Transactions {
   partner_credit_amount      Int
   cashback                   Int               @default(0)
   description                String?
+  provider_tx_id             String?           @unique
   status                     TransactionStatus
   transaction_type           TransactionType
   favored_partner_user_uuid  String?

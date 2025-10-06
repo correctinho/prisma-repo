@@ -431,6 +431,7 @@ enum UserItemEventType {
   REFUND_RECEIVED // Reembolso creditado neste item
   BALANCE_ADJUSTMENT // Ajuste manual de saldo
   BENEFIT_EXPIRED // Saldo expirado (se aplicável)
+  PIX_RECEIVED // Crédito recebido via PIX
   OTHER // Outros
 }
 
@@ -490,7 +491,8 @@ enum TransactionType {
   P2P_TRANSFER // Transferência entre usuários
   POS_PAYMENT // Pagamento para comércio via PDV/QR Code
   ECOMMERCE_PAYMENT // Pagamento para comércio online
-  CASH_IN_PIX // Depósito via Pix (se for registrar aqui)
+  CASH_IN_PIX_USER // Depósito via Pix pelo usuário
+  CASH_IN_PIX_PARTNER // Depósito via Pix pela empresa/parceiro
   CASH_OUT // Saque (se for registrar aqui)
   BENEFIT_CREDIT // Crédito de benefício pela empresa (se for registrar aqui)
   // Adicionar outros tipos conforme sua necessidade
@@ -511,6 +513,7 @@ model Transactions {
   cashback                   Int               @default(0)
   description                String?
   provider_tx_id             String?           @unique
+  pix_e2e_id                 String?           @unique
   status                     TransactionStatus
   transaction_type           TransactionType
   favored_partner_user_uuid  String?

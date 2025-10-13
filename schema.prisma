@@ -201,15 +201,17 @@ model UserInfo {
 }
 
 model Employee {
-  uuid                  String  @id @default(uuid())
+  uuid                  String         @id @default(uuid())
   user_info_uuid        String
   business_info_uuid    String
   company_internal_code String?
   salary                Int?
   dependents_quantity   Int?
   job_title             String?
-  company_owner         Boolean @default(false)
+  company_owner         Boolean        @default(false)
+  status                EmployeeStatus @default(active)
   created_at            String?
+  fired_at              String?
   updated_at            String?
 
   UserInfo     UserInfo     @relation(fields: [user_info_uuid], references: [uuid])
@@ -218,18 +220,23 @@ model Employee {
   @@map("employee")
 }
 
+enum EmployeeStatus {
+  active //Atual na empresa
+  inactive //Demitido
+}
+
 model UserDocumentValidation {
-  uuid                   String                       @id @default(uuid())
-  document_front_base64  String?
-  document_front_status  UserDocumentValidationStatus @default(pending_to_send)
-  document_back_base64   String?
-  document_back_status   UserDocumentValidationStatus @default(pending_to_send)
-  selfie_base64          String?
-  selfie_status          UserDocumentValidationStatus @default(pending_to_send)
-  document_selfie_base64 String?
-  document_selfie_status UserDocumentValidationStatus @default(pending_to_send)
-  created_at             String?
-  updated_at             String?
+  uuid                       String                        @id @default(uuid())
+  document_front_url         String?  
+  document_front_status      UserDocumentValidationStatus  @default(pending_to_send)
+  document_back_url          String?  
+  document_back_status       UserDocumentValidationStatus  @default(pending_to_send)
+  selfie_url                 String?  
+  selfie_status              UserDocumentValidationStatus  @default(pending_to_send)
+  document_selfie_url        String?  
+  document_selfie_status     UserDocumentValidationStatus  @default(pending_to_send)
+  created_at                 String?
+  updated_at                 String?
 
   UserInfo UserInfo[]
 

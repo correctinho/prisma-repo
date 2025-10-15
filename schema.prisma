@@ -187,15 +187,17 @@ model UserInfo {
 
   UserAuth UserAuth[]
 
-  businesses       BusinessInfo[]          @relation("UserBusinessInfo")
-  Address          Address?                @relation(fields: [address_uuid], references: [uuid])
-  UserValidation   UserDocumentValidation? @relation(fields: [user_document_validation_uuid], references: [uuid])
-  Transactions     Transactions[]
-  UserNotification UserNotification[]
-  UserItem         UserItem[]
-  ContractInfo     ContractInfo[]
-  Employee         Employee[]
-  Cart             Cart[]
+  businesses          BusinessInfo[]          @relation("UserBusinessInfo")
+  Address             Address?                @relation(fields: [address_uuid], references: [uuid])
+  UserValidation      UserDocumentValidation? @relation(fields: [user_document_validation_uuid], references: [uuid])
+  Transactions        Transactions[]
+  UserNotification    UserNotification[]
+  UserItem            UserItem[]
+  ContractInfo        ContractInfo[]
+  Employee            Employee[]
+  Cart                Cart[]
+  OfflineToken        OfflineToken[]
+  OfflineTokenHistory OfflineTokenHistory[]
 
   @@map("user_info")
 }
@@ -226,17 +228,17 @@ enum EmployeeStatus {
 }
 
 model UserDocumentValidation {
-  uuid                       String                        @id @default(uuid())
-  document_front_url         String?  
-  document_front_status      UserDocumentValidationStatus  @default(pending_to_send)
-  document_back_url          String?  
-  document_back_status       UserDocumentValidationStatus  @default(pending_to_send)
-  selfie_url                 String?  
-  selfie_status              UserDocumentValidationStatus  @default(pending_to_send)
-  document_selfie_url        String?  
-  document_selfie_status     UserDocumentValidationStatus  @default(pending_to_send)
-  created_at                 String?
-  updated_at                 String?
+  uuid                   String                       @id @default(uuid())
+  document_front_url     String?
+  document_front_status  UserDocumentValidationStatus @default(pending_to_send)
+  document_back_url      String?
+  document_back_status   UserDocumentValidationStatus @default(pending_to_send)
+  selfie_url             String?
+  selfie_status          UserDocumentValidationStatus @default(pending_to_send)
+  document_selfie_url    String?
+  document_selfie_status UserDocumentValidationStatus @default(pending_to_send)
+  created_at             String?
+  updated_at             String?
 
   UserInfo UserInfo[]
 
@@ -401,11 +403,13 @@ model UserItem {
   updated_at            String?
   Transactions          Transactions[]
 
-  UserInfo        UserInfo          @relation(fields: [user_info_uuid], references: [uuid])
-  Item            Item              @relation(fields: [item_uuid], references: [uuid])
-  Business        BusinessInfo?     @relation(fields: [business_info_uuid], references: [uuid])
-  BenefitGroups   BenefitGroups?    @relation(fields: [group_uuid], references: [uuid])
-  UserItemHistory UserItemHistory[]
+  UserInfo            UserInfo              @relation(fields: [user_info_uuid], references: [uuid])
+  Item                Item                  @relation(fields: [item_uuid], references: [uuid])
+  Business            BusinessInfo?         @relation(fields: [business_info_uuid], references: [uuid])
+  BenefitGroups       BenefitGroups?        @relation(fields: [group_uuid], references: [uuid])
+  UserItemHistory     UserItemHistory[]
+  OfflineToken        OfflineToken[]
+  OfflineTokenHistory OfflineTokenHistory[]
 
   @@unique([user_info_uuid, business_info_uuid, item_uuid])
   @@map("user_item")
@@ -487,6 +491,75 @@ model BusinessContract {
   @@map("business_contract")
 }
 
+enum OfflineTokenStatus {
+  ACTIVE // Token gerado e disponível para uso.
+  CONSUMED // Token foi usado com sucesso e a transação confirmada (POS online).
+  EXPIRED // Token expirou sem ser usado (pode ser deletado pelo Refresh).
+  REVOKED // Token revogado por alguma razão (ex: admin, alteração de benefício).
+}
+
+model OfflineToken {
+  uuid             String             @id @default(uuid())
+  token_code       String             @unique // O código alfanumérico de 6 caracteres. ÚNICO entre todos os tokens ATIVOS/CONSUMED.
+  user_info_uuid   String // O UUID do usuário dono deste token.
+  user_item_uuid   String // O UUID do UserItem (benefício específico) ao qual este token está vinculado.
+  status           OfflineTokenStatus @default(ACTIVE) // O status atual do token (ACTIVE, CONSUMED, EXPIRED, REVOKED).
+  expires_at       DateTime // Data e hora de expiração.
+  activated_at     DateTime           @default(now()) // Quando este token específico foi gerado/associado.
+  last_accessed_at DateTime? // Última vez que o token foi acessado/visto pelo app (para o cron/n8n monitorar inatividade).
+  last_used_at     DateTime? // Última vez que o token foi apresentado em um POS (para auditoria e debugging).
+
+  sequence_number Int // Número de ordem do token na pool (1 a 5).
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  UserInfo UserInfo @relation(fields: [user_info_uuid], references: [uuid])
+  UserItem UserItem @relation(fields: [user_item_uuid], references: [uuid])
+
+  // Índices para performance
+  @@index([user_info_uuid, user_item_uuid, status]) // Para buscar todos os tokens de um usuário/benefício por status.
+  @@index([token_code]) // Para buscas rápidas pelo token_code (principalmente pelo POS).
+  @@index([status, expires_at]) // Para o cron job de verificação de expiração/consumo.
+  @@map("offline_tokens")
+}
+
+enum OfflineTokenHistoryEventType {
+  ACTIVATED // Token gerado e ativado.
+  USED_IN_TRANSACTION // Token foi usado em uma transação (via POS).
+  CONSUMED // Transação foi confirmada, e o token foi marcado como consumido.
+  EXPIRED_BY_TTL // Token expirou naturalmente sem ser usado.
+  REVOKED // Token foi revogado por um admin ou regra de negócio.
+  REPLACED_BY_NEW_ACTIVATION // Token foi substituído por uma nova ativação (benefício alterado, ou pool recriada).
+  DELETED_FROM_POOL // Token foi removido da pool ativa (pelo Refresh Usecase).
+}
+
+model OfflineTokenHistory {
+  uuid                     String                       @id @default(uuid())
+  original_token_uuid      String? // O UUID do registro original em `OfflineToken` (se foi deletado).
+  token_code               String // O código do token (ex: "A1B2C3").
+  user_info_uuid           String // UUID do usuário ao qual o token estava vinculado no momento do evento.
+  user_item_uuid           String // UUID do UserItem ao qual o token estava vinculado no momento do evento.
+  event_type               OfflineTokenHistoryEventType // Tipo do evento ocorrido com o token.
+  event_description        String? // Descrição detalhada do evento (ex: "Transação #XYZ-123", "Expirado por inatividade").
+  related_transaction_uuid String? // FK opcional para a transação que usou/consumiu o token.
+  event_at                 DateTime                     @default(now()) // Quando o evento ocorreu.
+
+  // Snapshot de campos importantes no momento do evento para auditoria
+  snapshot_expires_at DateTime?
+  snapshot_status     OfflineTokenStatus? // O status do token no momento do evento.
+
+  // Relacionamentos para facilitar a auditoria
+  UserInfo           UserInfo?     @relation(fields: [user_info_uuid], references: [uuid])
+  UserItem           UserItem?     @relation(fields: [user_item_uuid], references: [uuid])
+  RelatedTransaction Transactions? @relation(fields: [related_transaction_uuid], references: [uuid])
+
+  @@index([token_code]) // Para buscar o histórico de um token_code específico.
+  @@index([user_info_uuid, user_item_uuid]) // Para buscar o histórico de tokens de um usuário/benefício.
+  @@index([related_transaction_uuid]) // Para buscar histórico a partir de uma transação.
+  @@map("offline_token_history")
+}
+
 enum TransactionStatus {
   pending
   success
@@ -523,6 +596,7 @@ model Transactions {
   pix_e2e_id                 String?           @unique
   status                     TransactionStatus
   transaction_type           TransactionType
+  used_offline_token_code     String?
   favored_partner_user_uuid  String?
   paid_at                    String?
   created_at                 String
@@ -537,6 +611,7 @@ model Transactions {
   BusinessAccountHistory BusinessAccountHistory[]
   UserItemHistory        UserItemHistory[]
   CorrectAccountHistory  CorrectAccountHistory[]
+  OfflineTokenHistory    OfflineTokenHistory[]
 
   @@map("transactions")
 }

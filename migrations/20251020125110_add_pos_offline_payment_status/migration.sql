@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "TransactionType" ADD VALUE 'POS_OFFLINE_PAYMENT';

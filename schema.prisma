@@ -570,6 +570,7 @@ enum TransactionStatus {
 enum TransactionType {
   P2P_TRANSFER // Transferência entre usuários
   POS_PAYMENT // Pagamento para comércio via PDV/QR Code
+  POS_OFFLINE_PAYMENT //Pagamento para comércio via PDV com o token offline
   ECOMMERCE_PAYMENT // Pagamento para comércio online
   CASH_IN_PIX_USER // Depósito via Pix pelo usuário
   CASH_IN_PIX_PARTNER // Depósito via Pix pela empresa/parceiro

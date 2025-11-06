@@ -590,6 +590,7 @@ model Transactions {
   net_price                  Int               @default(0)
   fee_percentage             Int?              @default(0) // Percentual da taxa aplicada
   fee_amount                 Int?              @default(0)
+  platform_net_fee_amount    Int?              @default(0)
   partner_credit_amount      Int
   cashback                   Int               @default(0)
   description                String?

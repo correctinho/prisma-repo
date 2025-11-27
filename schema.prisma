@@ -134,6 +134,7 @@ model BusinessInfo {
   FavoredTransactions     Transactions[]            @relation("FavoredTransactions")
   // Lista de transações onde esta empresa foi a PAGADORA
   PayerTransactions       Transactions[]            @relation("PayerTransactions")
+  Subscription            Subscription[]
 
   @@map("business_data")
 }
@@ -198,6 +199,7 @@ model UserInfo {
   Cart                Cart[]
   OfflineToken        OfflineToken[]
   OfflineTokenHistory OfflineTokenHistory[]
+  Subscription        Subscription[]
 
   @@map("user_info")
 }
@@ -298,6 +300,7 @@ model Item {
   BusinessInfoItem    BusinessInfoItem[]
   EmployerItemDetails EmployerItemDetails[]
   UserItem            UserItem[]
+  SubscriptionPlan    SubscriptionPlan[]
 
   @@map("items")
 }
@@ -366,6 +369,7 @@ model EmployerItemDetails {
   BusinessInfo             BusinessInfo            @relation(fields: [business_info_uuid], references: [uuid])
   EmployerPreItemRegisters EmployerItemRegisters[]
   BenefitGroups            BenefitGroups[]
+  Subscription             Subscription[]
 
   @@map("employer_item_details")
 }
@@ -410,6 +414,7 @@ model UserItem {
   UserItemHistory     UserItemHistory[]
   OfflineToken        OfflineToken[]
   OfflineTokenHistory OfflineTokenHistory[]
+  Subscription        Subscription[]
 
   @@unique([user_info_uuid, business_info_uuid, item_uuid])
   @@map("user_item")
@@ -576,6 +581,7 @@ enum TransactionType {
   CASH_IN_PIX_PARTNER // Depósito via Pix pela empresa/parceiro
   CASH_OUT // Saque (se for registrar aqui)
   BENEFIT_CREDIT // Crédito de benefício pela empresa (se for registrar aqui)
+  SUBSCRIPTION_PAYMENT // Pagamento de assinatura (B2C ou B2B)
   // Adicionar outros tipos conforme sua necessidade
 }
 
@@ -585,6 +591,7 @@ model Transactions {
   favored_user_uuid          String?
   favored_business_info_uuid String?
   payer_business_info_uuid   String?
+  subscription_uuid          String?
   original_price             Int               @default(0)
   discount_percentage        Int               @default(0)
   net_price                  Int               @default(0)
@@ -598,7 +605,7 @@ model Transactions {
   pix_e2e_id                 String?           @unique
   status                     TransactionStatus
   transaction_type           TransactionType
-  used_offline_token_code     String?
+  used_offline_token_code    String?
   favored_partner_user_uuid  String?
   paid_at                    String?
   created_at                 String
@@ -609,11 +616,13 @@ model Transactions {
   BusinessInfo           BusinessInfo?            @relation("FavoredTransactions", fields: [favored_business_info_uuid], references: [uuid])
   PartnerUser            BusinessUser?            @relation(fields: [favored_partner_user_uuid], references: [uuid])
   PayerBusiness          BusinessInfo?            @relation("PayerTransactions", fields: [payer_business_info_uuid], references: [uuid])
+  Subscription           Subscription?            @relation(fields: [subscription_uuid], references: [uuid])
   PartnerCreditSpend     PartnerCreditSpend[]
   BusinessAccountHistory BusinessAccountHistory[]
   UserItemHistory        UserItemHistory[]
   CorrectAccountHistory  CorrectAccountHistory[]
   OfflineTokenHistory    OfflineTokenHistory[]
+
 
   @@map("transactions")
 }
@@ -821,6 +830,71 @@ model BenefitGroups {
   UserItemHistory UserItemHistory[]
 
   @@map("benefit_groups")
+}
+
+//**********SUBSCRIPTION MODELS************
+enum PayerType {
+  EMPLOYER // Pago pela empresa (desconto em folha)
+  USER // Pago pelo usuário (PIX avulso)
+}
+
+enum BillingPeriod {
+  MONTHLY
+  YEARLY
+  ONE_TIME // Para compras avulsas
+}
+
+model SubscriptionPlan {
+  uuid           String        @id @default(uuid())
+  item_uuid      String // O benefício técnico que está sendo vendido
+  name           String // Nome comercial do plano (ex: "Saúde Premium - Empresa")
+  description    String?
+  price          Int // Preço em centavos
+  currency       String        @default("BRL")
+  billing_period BillingPeriod // Periodicidade da cobrança
+  payer_type     PayerType // Quem é o responsável financeiro
+  is_active      Boolean       @default(true)
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @updatedAt
+
+  Item          Item           @relation(fields: [item_uuid], references: [uuid])
+  Subscriptions Subscription[]
+
+  @@map("subscription_plans")
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PENDING_PAYMENT // Para PIX avulso aguardando confirmação
+  CANCELED
+  EXPIRED
+}
+
+model Subscription {
+  uuid                   String             @id @default(uuid())
+  subscription_plan_uuid String
+  business_info_uuid     String? // Se o plano é pago pelo EMPREGADOR
+  user_info_uuid         String? // Se o plano é pago pelo USUÁRIO
+  status                 SubscriptionStatus @default(ACTIVE)
+  start_date             DateTime           @default(now())
+  end_date               DateTime? // Pode ser nulo para assinaturas recorrentes ativas
+  next_billing_date      DateTime? // Próxima data de cobrança (para planos recorrentes)
+
+  // FKs para ligar com a estrutura existente de liberação de acesso
+  employer_item_details_uuid String? // Ligação se for plano de empregador
+  user_item_uuid             String? // Ligação se for plano de usuário (avulso)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  SubscriptionPlan    SubscriptionPlan     @relation(fields: [subscription_plan_uuid], references: [uuid])
+  BusinessInfo        BusinessInfo?        @relation(fields: [business_info_uuid], references: [uuid])
+  UserInfo            UserInfo?            @relation(fields: [user_info_uuid], references: [uuid])
+  EmployerItemDetails EmployerItemDetails? @relation(fields: [employer_item_details_uuid], references: [uuid])
+  UserItem            UserItem?            @relation(fields: [user_item_uuid], references: [uuid])
+  transactions        Transactions[]
+
+  @@map("subscriptions")
 }
 
 //**********ECOMMERCE MODELS************

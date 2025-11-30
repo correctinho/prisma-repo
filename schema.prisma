@@ -1036,3 +1036,119 @@ model CorrectUserBusinessInfo {
 
   @@map("correct_user_business")
 }
+
+//MODULO DE AGENDAMENTO DE SERVIÇOS
+// ==========================================
+// MÓDULO DE SOLICITAÇÃO DE SERVIÇOS (NOVO)
+// ==========================================
+
+// Status do fluxo de solicitação
+enum RequestStatus {
+  PENDING_PROVIDER_OPTIONS // Passo 1: Usuário enviou janelas, aguardando prestador ofertar slots.
+  PENDING_USER_SELECTION   // Passo 2: Prestador ofertou slots, aguardando usuário escolher um.
+  CONFIRMED                // Passo 3: Usuário escolheu um slot (gera um ConfirmedAppointment).
+  DECLINED                 // Prestador não pode atender ou usuário recusou as ofertas.
+  EXPIRED                  // Tempo limite sem ação.
+}
+
+// Períodos do dia para a janela de preferência
+enum DayPeriod {
+  MORNING   // Manhã
+  AFTERNOON // Tarde
+  EVENING   // Noite (se aplicável)
+}
+
+// 1. A SOLICITAÇÃO PAI (O Container)
+model ServiceRequest {
+  uuid               String        @id @default(uuid())
+  user_info_uuid     String        // Quem solicita
+  business_info_uuid String        // Quem presta
+  product_uuid       String        // O serviço (Product tipo SERVICE)
+  status             RequestStatus @default(PENDING_PROVIDER_OPTIONS)
+  
+  created_at         DateTime      @default(now())
+  updated_at         DateTime      @updatedAt
+
+  // Relacionamentos básicos
+  UserInfo     UserInfo     @relation(fields: [user_info_uuid], references: [uuid])
+  BusinessInfo BusinessInfo @relation(fields: [business_info_uuid], references: [uuid])
+  Product      Products     @relation(fields: [product_uuid], references: [uuid])
+
+  // Relacionamentos do fluxo
+  RequestedWindows     RequestedWindow[]     // Passo 1: As preferências do usuário
+  SuggestedSlots       SuggestedSlot[]       // Passo 2: As ofertas do prestador
+  ConfirmedAppointment ConfirmedAppointment? // Passo 3: O resultado final
+
+  @@map("service_requests")
+}
+
+// 2. PASSO 1: JANELAS SOLICITADAS PELO USUÁRIO
+// Ex: "Dia 20/11 de Manhã", "Dia 22/11 de Tarde"
+model RequestedWindow {
+  uuid                 String    @id @default(uuid())
+  service_request_uuid String
+  
+  date                 DateTime  // A data específica (sem hora)
+  period               DayPeriod // O turno desejado
+
+  ServiceRequest ServiceRequest @relation(fields: [service_request_uuid], references: [uuid])
+  @@map("requested_windows")
+}
+
+// 3. PASSO 2: SLOTS OFERTADOS PELO PRESTADOR
+// Ex: "20/11 às 09:15", "22/11 às 14:30"
+model SuggestedSlot {
+  uuid                 String   @id @default(uuid())
+  service_request_uuid String
+  
+  start_datetime       DateTime // Data e hora EXATA oferecida
+  
+  // Marca qual foi o escolhido pelo usuário no final (opcional, pode ser deduzido pelo ConfirmedAppointment)
+  is_selected          Boolean  @default(false) 
+
+  ServiceRequest ServiceRequest @relation(fields: [service_request_uuid], references: [uuid])
+  @@map("suggested_slots")
+}
+
+// 4. PASSO 3: O AGENDAMENTO CONFIRMADO
+// Igual ao modelo anterior. É o "contrato" final.
+model ConfirmedAppointment {
+  uuid                 String            @id @default(uuid())
+  service_request_uuid String            @unique // Vínculo único com a solicitação original
+
+  final_scheduled_date DateTime          // A data/hora exata que o usuário clicou para confirmar
+  status               AppointmentStatus @default(SCHEDULED) // Enum definido anteriormente
+
+  // VÍNCULO FINANCEIRO (Preenchido no dia do atendimento pelo app)
+  payment_transaction_uuid String?       @unique
+
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+
+  ServiceRequest     ServiceRequest @relation(fields: [service_request_uuid], references: [uuid])
+  PaymentTransaction Transactions?  @relation(fields: [payment_transaction_uuid], references: [uuid])
+  Review             ServiceReview?
+
+  @@map("confirmed_appointments")
+}
+
+// Status do agendamento (Reaproveitado)
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELED
+  NO_SHOW
+}
+
+// 5. AVALIAÇÕES (Reaproveitado)
+model ServiceReview {
+  uuid                       String   @id @default(uuid())
+  confirmed_appointment_uuid String   @unique
+  user_rating                Int?
+  user_comment               String?
+  business_rating            Int?
+  business_comment           String?
+  created_at                 DateTime @default(now())
+  Appointment ConfirmedAppointment @relation(fields: [confirmed_appointment_uuid], references: [uuid])
+  @@map("service_reviews")
+}

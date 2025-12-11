@@ -265,6 +265,10 @@ model UserAuth {
   transaction_pin String?
   is_active       Boolean @default(true)
 
+  is_email_verified             Boolean   @default(false) @map("is_email_verified")
+  email_verification_token      String?   @map("email_verification_token")
+  email_verification_expires_at DateTime? @map("email_verification_expires_at")
+
   created_at String?
   updated_at String?
 

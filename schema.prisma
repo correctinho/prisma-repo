@@ -269,6 +269,9 @@ model UserAuth {
   email_verification_token      String?   @map("email_verification_token")
   email_verification_expires_at DateTime? @map("email_verification_expires_at")
 
+  password_reset_token          String?   @map("password_reset_token")
+  password_reset_expires_at     DateTime? @map("password_reset_expires_at")
+
   created_at String?
   updated_at String?
 

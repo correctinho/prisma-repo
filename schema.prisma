@@ -457,6 +457,8 @@ enum UserItemEventType {
   BALANCE_ADJUSTMENT // Ajuste manual de saldo
   BENEFIT_EXPIRED // Saldo expirado (se aplicável)
   PIX_RECEIVED // Crédito recebido via PIX
+  TEI_SENT     // Transferência TEI enviada (Débito)
+  TEI_RECEIVED // Transferência TEI recebida (Crédito)
   OTHER // Outros
 }
 

@@ -438,7 +438,7 @@ model UserItemHistory {
   balance_after              Int // Saldo depois
   related_transaction_uuid   String? // FK opcional para Transactions (gasto ou cashback de uma transação)
   related_benefit_group_uuid String? // FK opcional para BenefitGroups (crédito inicial do grupo)
-  created_at                 DateTime          @default(now())
+  created_at                 DateTime          @default(now()) @db.Timestamptz(3)
 
   UserItem            UserItem       @relation(fields: [user_item_uuid], references: [uuid])
   // Relação opcional com Transações

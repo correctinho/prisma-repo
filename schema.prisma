@@ -79,10 +79,31 @@ model BusinessUser {
   UpdatedProducts      Products[]             @relation("UpdatedProducts")
   DeletedProducts      Products[]             @relation("DeletedProducts")
   ProductChanges       ProductHistory[]
+  termAcceptances      TermAcceptance[]
 
   @@map("business_users")
 }
 
+model LoginHistory {
+  uuid        String   @id @default(uuid())
+
+  // Quem fez o login? (FK para sua tabela de usuários)
+  user_info_uuid String
+  // UserInfo UserInfo @relation(...)
+
+  // Quando?
+  logged_at   DateTime @default(now())
+
+  // Dados de auditoria
+  ip_address  String
+  user_agent  String
+
+  // (Opcional) Útil no futuro: foi um login com senha? refresh token? biometria?
+  // login_method String? 
+
+  @@index([user_info_uuid])
+  @@map("login_histories")
+}
 model CorrectAdminBusiness {
   uuid               String @id @default(uuid())
   business_info_uuid String
@@ -202,6 +223,7 @@ model UserInfo {
   OfflineTokenHistory OfflineTokenHistory[]
   Subscription        Subscription[]
   serviceRequests     ServiceRequest[]
+  termAcceptances     TermAcceptance[]
 
   @@map("user_info")
 }
@@ -269,8 +291,8 @@ model UserAuth {
   email_verification_token      String?   @map("email_verification_token")
   email_verification_expires_at DateTime? @map("email_verification_expires_at")
 
-  password_reset_token          String?   @map("password_reset_token")
-  password_reset_expires_at     DateTime? @map("password_reset_expires_at")
+  password_reset_token      String?   @map("password_reset_token")
+  password_reset_expires_at DateTime? @map("password_reset_expires_at")
 
   created_at String?
   updated_at String?
@@ -457,7 +479,7 @@ enum UserItemEventType {
   BALANCE_ADJUSTMENT // Ajuste manual de saldo
   BENEFIT_EXPIRED // Saldo expirado (se aplicável)
   PIX_RECEIVED // Crédito recebido via PIX
-  TEI_SENT     // Transferência TEI enviada (Débito)
+  TEI_SENT // Transferência TEI enviada (Débito)
   TEI_RECEIVED // Transferência TEI recebida (Crédito)
   OTHER // Outros
 }
@@ -634,6 +656,7 @@ model Transactions {
   CorrectAccountHistory  CorrectAccountHistory[]
   OfflineTokenHistory    OfflineTokenHistory[]
   confirmedAppointment   ConfirmedAppointment?
+  termAcceptances        TermAcceptance[]
 
   @@map("transactions")
 }
@@ -1166,4 +1189,78 @@ model ServiceReview {
   Appointment                ConfirmedAppointment @relation(fields: [confirmed_appointment_uuid], references: [uuid])
 
   @@map("service_reviews")
+}
+
+// =========================================================
+// GESTÃO DE TERMOS E CONTRATOS (TERMS OF SERVICE)
+// =========================================================
+
+// Enum para diferenciar os tipos de documentos
+enum TermsType {
+  B2C_APP_USER_EULA // Termos de uso para o usuário final do App
+  B2B_BUSINESS_MSA // Contrato comercial para empresas contratantes
+  PRIVACY_POLICY // Política de privacidade global
+}
+
+/**
+ * Tabela que armazena o CONTEÚDO dos termos e suas VERSÕES.
+ */
+model TermsOfService {
+  uuid    String    @id @default(uuid())
+  version String // Identificador da versão (Ex: "v1.0", "2025.10-rev2")
+  type    TermsType // Define que tipo de documento é este
+  content String    @db.Text // O texto completo do contrato (HTML ou markdown longo)
+
+  // Flag para facilitar a busca da versão que deve ser mostrada AGORA no front.
+  // A regra de negócio deve garantir que apenas UM registro por 'type' seja true.
+  is_active Boolean @default(false)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relacionamento inverso: um termo tem muitos aceites
+  Acceptances TermAcceptance[]
+
+  // Índice para buscar rapidamente a versão ativa de um tipo específico
+  @@index([type, is_active])
+  @@map("terms_of_service")
+}
+
+/**
+ * Tabela de AUDITORIA que registra QUEM aceitou, O QUÊ e QUANDO.
+ * Esta é a prova legal do aceite.
+ */
+model TermAcceptance {
+  uuid String @id @default(uuid())
+
+  // --- CAMPOS POLIMÓRFICOS (CHAVES ESTRANGEIRAS OPCIONAIS) ---
+  // A regra de negócio (UseCase) DEVE garantir que EXATAMENTE UM
+  // destes dois campos esteja preenchido em cada registro.
+  app_user_info_uuid String? // Preenchido se foi um usuário final do app
+  company_user_uuid  String? // Preenchido se foi um admin de empresa (ajuste o nome da tabela se precisar)
+
+  terms_uuid String // FK obrigatória: Qual versão exata foi aceita
+
+  accepted_at DateTime @default(now()) // O carimbo de data/hora exato do clique
+  ip_address  String? // CRUCIAL para auditoria jurídica (guarda o IP da requisição)
+  user_agent  String? // (Opcional) Guarda dados do navegador/dispositivo para mais robustez
+
+  // Útil para provar que no ato da compra X, os termos eram Y.
+  transaction_uuid String?
+  // --- RELACIONAMENTOS ---
+
+  // 1. Relacionamento com a versão do termo (Obrigatório)
+  TermsVersion TermsOfService @relation(fields: [terms_uuid], references: [uuid])
+
+  // 2. Relacionamentos opcionais com os tipos de usuários
+  // (Certifique-se de que os nomes dos modelos AppUserInfoEntity e CompanyUserEntity estão corretos no seu projeto)
+  AppUser     UserInfo?     @relation(fields: [app_user_info_uuid], references: [uuid])
+  CompanyUser BusinessUser? @relation(fields: [company_user_uuid], references: [uuid])
+  Transaction Transactions? @relation(fields: [transaction_uuid], references: [uuid])
+
+  // Índices para performance ao buscar o histórico de um usuário
+  @@index([app_user_info_uuid])
+  @@index([company_user_uuid])
+  @@index([transaction_uuid])
+  @@map("term_acceptances")
 }

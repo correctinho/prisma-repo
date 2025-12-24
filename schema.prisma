@@ -695,6 +695,7 @@ enum CorrectAccountEventType {
   PAYOUT_SENT // Pagamento enviado (ex: para conta bancária)
   MANUAL_ADJUSTMENT // Ajuste manual (crédito ou débito)
   SERVICE_COST // Custo de serviço interno
+  SUBSCRIPTION_REVENUE //Receita de assinatura recebida
   OTHER // Outros tipos
 }
 

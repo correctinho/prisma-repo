@@ -69,6 +69,7 @@ model BusinessUser {
   transaction_pin    String?
   permissions        Permissions[] @default([all])
   status             Status        @default(pending_password)
+  gamerTag           String?
   created_at         String?
   updated_at         String?
 
@@ -80,23 +81,24 @@ model BusinessUser {
   DeletedProducts      Products[]             @relation("DeletedProducts")
   ProductChanges       ProductHistory[]
   termAcceptances      TermAcceptance[]
+  gameScores           GameScore[]
 
   @@map("business_users")
 }
 
 model LoginHistory {
-  uuid        String   @id @default(uuid())
+  uuid String @id @default(uuid())
 
   // Quem fez o login? (FK para sua tabela de usuários)
   user_info_uuid String
   // UserInfo UserInfo @relation(...)
 
   // Quando?
-  logged_at   DateTime @default(now())
+  logged_at DateTime @default(now())
 
   // Dados de auditoria
-  ip_address  String
-  user_agent  String
+  ip_address String
+  user_agent String
 
   // (Opcional) Útil no futuro: foi um login com senha? refresh token? biometria?
   // login_method String? 
@@ -104,6 +106,7 @@ model LoginHistory {
   @@index([user_info_uuid])
   @@map("login_histories")
 }
+
 model CorrectAdminBusiness {
   uuid               String @id @default(uuid())
   business_info_uuid String
@@ -205,6 +208,7 @@ model UserInfo {
   is_authenticated              Boolean @default(false)
   marital_status                String?
   user_document_validation_uuid String?
+  gamerTag                      String?
   created_at                    String?
   updated_at                    String?
 
@@ -224,6 +228,7 @@ model UserInfo {
   Subscription        Subscription[]
   serviceRequests     ServiceRequest[]
   termAcceptances     TermAcceptance[]
+  gameScores          GameScore[]
 
   @@map("user_info")
 }
@@ -1264,4 +1269,50 @@ model TermAcceptance {
   @@index([company_user_uuid])
   @@index([transaction_uuid])
   @@map("term_acceptances")
+}
+
+//GAMES LOGIC
+model Game {
+  id          String  @id @default(uuid())
+  slug        String  @unique // Identificador usado no código (ex: 'rock-dodger')
+  name        String // Nome legível (ex: 'Rock Dodger')
+  description String?
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relação inversa: Um jogo tem muitos scores
+  scores GameScore[]
+
+  @@map("games") // Opcional: para o nome da tabela no banco ser minúsculo
+}
+
+model GameScore {
+  uuid  String @id @default(uuid())
+  score Int
+
+  // Campo JSON é vital para jogos! 
+  // Permite salvar coisas como { "tempo": 120, "inimigosDestruidos": 15, "fase": 3 }
+  // sem precisar alterar o banco de dados a cada jogo novo.
+  metaData Json?
+
+  playedAt DateTime @default(now())
+
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id])
+
+  userInfoId String?
+  userInfo   UserInfo? @relation(fields: [userInfoId], references: [uuid])
+
+  // 3. Quem jogou? (Business User)
+  // O '?' indica que é opcional
+  businessUserId String?
+  businessUser   BusinessUser? @relation(fields: [businessUserId], references: [uuid])
+
+  // Índices para deixar o Ranking rápido
+  @@index([gameId, score(sort: Desc)]) // Índice composto para pegar o TOP Score rápido
+  @@index([userInfoId])
+  @@index([businessUserId])
+  @@map("game_scores")
 }

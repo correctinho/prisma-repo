@@ -160,6 +160,7 @@ model BusinessInfo {
   PayerTransactions       Transactions[]            @relation("PayerTransactions")
   Subscription            Subscription[]
   serviceRequests         ServiceRequest[]
+  businessOrders          BusinessOrder[]
 
   @@map("business_data")
 }
@@ -337,6 +338,7 @@ model Item {
   EmployerItemDetails EmployerItemDetails[]
   UserItem            UserItem[]
   SubscriptionPlan    SubscriptionPlan[]
+  businessOrders      BusinessOrder[]
 
   @@map("items")
 }
@@ -451,6 +453,7 @@ model UserItem {
   OfflineToken        OfflineToken[]
   OfflineTokenHistory OfflineTokenHistory[]
   Subscription        Subscription[]
+  businessOrderItems  BusinessOrderItem[]
 
   @@unique([user_info_uuid, business_info_uuid, item_uuid])
   @@map("user_item")
@@ -1315,4 +1318,56 @@ model GameScore {
   @@index([userInfoId])
   @@index([businessUserId])
   @@map("game_scores")
+}
+
+// ==========================================
+// MÓDULO DE PEDIDOS DE CRÉDITO (RECARGAS)
+// ==========================================
+
+enum OrderStatus {
+  PENDING // Aguardando pagamento (PIX)
+  PAID // Confirmado pelo Admin Correct (Saldo liberado)
+  CANCELLED // Cancelado pelo RH antes do pagamento
+  REJECTED // Rejeitado pelo Admin Correct (ex: erro no valor/comprovante)
+}
+
+model BusinessOrder {
+  uuid               String @id @default(uuid())
+  business_info_uuid String
+  item_uuid          String // O Benefício específico deste pedido (ex: VR)
+
+  total_amount      Int // Valor total do pedido em centavos
+  status            OrderStatus @default(PENDING)
+  payment_proof_url String? // URL do comprovante (se houver upload)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relacionamentos
+  Business   BusinessInfo        @relation(fields: [business_info_uuid], references: [uuid])
+  Item       Item                @relation(fields: [item_uuid], references: [uuid])
+  OrderItems BusinessOrderItem[] // Os itens individuais deste pedido
+
+  @@map("business_orders")
+}
+
+model BusinessOrderItem {
+  uuid           String @id @default(uuid())
+  order_uuid     String
+  user_item_uuid String // Vínculo direto com a carteira do usuário (para creditar depois)
+
+  amount Int // Valor da recarga individual em centavos
+
+  // SNAPSHOT: Congela os dados do colaborador naquele momento.
+  // Se o colaborador mudar de grupo ou casar (mudar nome), o recibo antigo continua fiel.
+  // Ex: { "full_name": "João Silva", "document": "123...", "group_name": "Diretoria", "email": "..." }
+  beneficiary_snapshot Json
+
+  created_at DateTime @default(now())
+
+  // Relacionamentos
+  Order    BusinessOrder @relation(fields: [order_uuid], references: [uuid])
+  UserItem UserItem      @relation(fields: [user_item_uuid], references: [uuid])
+
+  @@map("business_order_items")
 }

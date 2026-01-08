@@ -30,14 +30,15 @@ model CorrectAdmin {
 }
 
 enum Permissions {
-  all
-  sales
-  finances
-  marketing
-  benefits
-  transports
-  allPartners
-  allEmployers
+  all            // Super Admin: Acesso irrestrito a todo o painel da empresa (cria usuários, vê tudo).
+  sales          
+  finances       // Financeiro: Acesso a faturas, recargas, histórico de pedidos e boletos.
+  marketing      
+  benefits      // Gestão de Benefícios: Configuração de grupos, valores, regras e ativação de produtos.
+  collaborators  // Gestão de Pessoas: Admissão, demissão e edição de dados dos funcionários.
+  transports     
+  allPartners    
+  allEmployers    
 }
 
 enum Status {

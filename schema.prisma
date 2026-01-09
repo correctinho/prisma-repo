@@ -30,15 +30,15 @@ model CorrectAdmin {
 }
 
 enum Permissions {
-  all            // Super Admin: Acesso irrestrito a todo o painel da empresa (cria usuários, vê tudo).
-  sales          
-  finances       // Financeiro: Acesso a faturas, recargas, histórico de pedidos e boletos.
-  marketing      
-  benefits      // Gestão de Benefícios: Configuração de grupos, valores, regras e ativação de produtos.
-  collaborators  // Gestão de Pessoas: Admissão, demissão e edição de dados dos funcionários.
-  transports     
-  allPartners    
-  allEmployers    
+  all // Super Admin: Acesso irrestrito a todo o painel da empresa (cria usuários, vê tudo).
+  sales
+  finances // Financeiro: Acesso a faturas, recargas, histórico de pedidos e boletos.
+  marketing
+  benefits // Gestão de Benefícios: Configuração de grupos, valores, regras e ativação de produtos.
+  collaborators // Gestão de Pessoas: Admissão, demissão e edição de dados dos funcionários.
+  transports
+  allPartners
+  allEmployers
 }
 
 enum Status {
@@ -58,21 +58,23 @@ enum BusinessStatus {
 }
 
 model BusinessUser {
-  uuid               String        @id @default(uuid())
-  business_info_uuid String
-  is_admin           Boolean       @default(false)
-  document           String?       @unique
-  name               String?
-  email              String?       @unique
-  user_name          String?
-  password           String
-  function           String?
-  transaction_pin    String?
-  permissions        Permissions[] @default([all])
-  status             Status        @default(pending_password)
-  gamerTag           String?
-  created_at         String?
-  updated_at         String?
+  uuid                      String        @id @default(uuid())
+  business_info_uuid        String
+  is_admin                  Boolean       @default(false)
+  document                  String?       @unique
+  name                      String?
+  email                     String?       @unique
+  user_name                 String?
+  password                  String
+  function                  String?
+  transaction_pin           String?
+  permissions               Permissions[] @default([all])
+  status                    Status        @default(pending_password)
+  gamerTag                  String?
+  password_reset_token      String?       @map("password_reset_token")
+  password_reset_expires_at DateTime?     @map("password_reset_expires_at")
+  created_at                String?
+  updated_at                String?
 
   BusinessInfo         BusinessInfo           @relation(fields: [business_info_uuid], references: [uuid])
   BusinessNotification BusinessNotification[]

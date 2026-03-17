@@ -104,7 +104,7 @@ model LoginHistory {
   user_agent String
 
   // (Opcional) Útil no futuro: foi um login com senha? refresh token? biometria?
-  // login_method String? 
+  // login_method String?
 
   @@index([user_info_uuid])
   @@map("login_histories")
@@ -492,6 +492,7 @@ enum UserItemEventType {
   PIX_RECEIVED // Crédito recebido via PIX
   TEI_SENT // Transferência TEI enviada (Débito)
   TEI_RECEIVED // Transferência TEI recebida (Crédito)
+  LIMIT_RENEWED // REFERENTE AO LIMITE RENOVADO NO BENEFICIO PÓS PAGO
   OTHER // Outros
 }
 
@@ -1298,7 +1299,7 @@ model GameScore {
   uuid  String @id @default(uuid())
   score Int
 
-  // Campo JSON é vital para jogos! 
+  // Campo JSON é vital para jogos!
   // Permite salvar coisas como { "tempo": 120, "inimigosDestruidos": 15, "fase": 3 }
   // sem precisar alterar o banco de dados a cada jogo novo.
   metaData Json?

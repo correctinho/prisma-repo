@@ -137,6 +137,7 @@ model BusinessInfo {
   employer_branch     String?
   created_at          String
   updated_at          String?
+  approved_at         String? // Adicionado para auditoria de aprovação
 
   Address Address? @relation(fields: [address_uuid], references: [uuid])
 

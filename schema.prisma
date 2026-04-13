@@ -135,6 +135,8 @@ model BusinessInfo {
   email               String              @unique
   business_type       BusinessTypeOptions
   employer_branch     String?
+  payroll_closing_day Int?                // Dia de fechamento da folha (1-31)
+  txt_delivery_day    Int?                // Dia de envio do arquivo TXT (1-31)
   created_at          String
   updated_at          String?
   approved_at         String? // Adicionado para auditoria de aprovação
@@ -683,7 +685,7 @@ model EmployerInvoice {
   cycle_end_date       DateTime       // Fim do ciclo (Ex: 19/04/2026)
   due_date             DateTime       // Vencimento (Ex: 25/04/2026)
   total_amount         Int            // Valor total em centavos
-  status               InvoiceStatus  @default(PENDING) 
+  status               InvoiceStatus  @default(PENDING)
   paid_at              DateTime?      // Quando o empregador transferiu o dinheiro
   created_at           DateTime       @default(now())
   updated_at           DateTime       @updatedAt

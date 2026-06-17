@@ -795,6 +795,7 @@ enum BusinessAccountEventType {
   PAYOUT_PROCESSED // Saque processado/enviado
   REFUND_ISSUED // Reembolso emitido para um cliente
   MANUAL_ADJUSTMENT // Ajuste manual
+  CASHBACK_RECEIVED //Cashback recebido
   OTHER // Outros
 }
 

@@ -135,8 +135,8 @@ model BusinessInfo {
   email               String              @unique
   business_type       BusinessTypeOptions
   employer_branch     String?
-  payroll_closing_day Int?                // Dia de fechamento da folha (1-31)
-  txt_delivery_day    Int?                // Dia de envio do arquivo TXT (1-31)
+  payroll_closing_day Int? // Dia de fechamento da folha (1-31)
+  txt_delivery_day    Int? // Dia de envio do arquivo TXT (1-31)
   created_at          String
   updated_at          String?
   approved_at         String? // Adicionado para auditoria de aprovação
@@ -167,7 +167,8 @@ model BusinessInfo {
   Subscription            Subscription[]
   serviceRequests         ServiceRequest[]
   businessOrders          BusinessOrder[]
-  EmployerInvoices EmployerInvoice[]
+  EmployerInvoices        EmployerInvoice[]
+  ecommerceOrders         EcommerceOrder[]
 
   @@map("business_data")
 }
@@ -237,6 +238,7 @@ model UserInfo {
   serviceRequests     ServiceRequest[]
   termAcceptances     TermAcceptance[]
   gameScores          GameScore[]
+  ecommerceOrders     EcommerceOrder[]
 
   @@map("user_info")
 }
@@ -673,24 +675,27 @@ model Transactions {
   OfflineTokenHistory    OfflineTokenHistory[]
   confirmedAppointment   ConfirmedAppointment?
   termAcceptances        TermAcceptance[]
+  Delivery               Delivery?                @relation(fields: [deliveryUuid], references: [uuid])
+  deliveryUuid           String?
+  ecommerceOrder         EcommerceOrder?
 
   @@map("transactions")
 }
 
 model EmployerInvoice {
-  uuid                 String         @id @default(uuid())
-  business_info_uuid   String         // Referência ao Empregador
-  reference_month      String         // Ex: "04/2026"
-  cycle_start_date     DateTime       // Início do ciclo (Ex: 20/03/2026)
-  cycle_end_date       DateTime       // Fim do ciclo (Ex: 19/04/2026)
-  due_date             DateTime       // Vencimento (Ex: 25/04/2026)
-  total_amount         Int            // Valor total em centavos
-  status               InvoiceStatus  @default(PENDING)
-  paid_at              DateTime?      // Quando o empregador transferiu o dinheiro
-  created_at           DateTime       @default(now())
-  updated_at           DateTime       @updatedAt
+  uuid               String        @id @default(uuid())
+  business_info_uuid String // Referência ao Empregador
+  reference_month    String // Ex: "04/2026"
+  cycle_start_date   DateTime // Início do ciclo (Ex: 20/03/2026)
+  cycle_end_date     DateTime // Fim do ciclo (Ex: 19/04/2026)
+  due_date           DateTime // Vencimento (Ex: 25/04/2026)
+  total_amount       Int // Valor total em centavos
+  status             InvoiceStatus @default(PENDING)
+  paid_at            DateTime? // Quando o empregador transferiu o dinheiro
+  created_at         DateTime      @default(now())
+  updated_at         DateTime      @updatedAt
 
-  BusinessInfo         BusinessInfo   @relation(fields: [business_info_uuid], references: [uuid])
+  BusinessInfo BusinessInfo @relation(fields: [business_info_uuid], references: [uuid])
 
   @@map("employer_invoices")
 }
@@ -1019,14 +1024,15 @@ model Products {
   created_at         String?
   updated_at         String?
 
-  Businessinfo    BusinessInfo     @relation(fields: [business_info_uuid], references: [uuid])
-  Categories      Categories       @relation(fields: [category_uuid], references: [uuid])
-  CreatedBy       BusinessUser     @relation("CreatedProducts", fields: [created_by_uuid], references: [uuid])
-  UpdatedBy       BusinessUser     @relation("UpdatedProducts", fields: [updated_by_uuid], references: [uuid])
-  DeletedBy       BusinessUser?    @relation("DeletedProducts", fields: [deleted_by_uuid], references: [uuid])
-  ProductHistory  ProductHistory[]
-  CartItem        CartItem[]
-  serviceRequests ServiceRequest[]
+  Businessinfo        BusinessInfo         @relation(fields: [business_info_uuid], references: [uuid])
+  Categories          Categories           @relation(fields: [category_uuid], references: [uuid])
+  CreatedBy           BusinessUser         @relation("CreatedProducts", fields: [created_by_uuid], references: [uuid])
+  UpdatedBy           BusinessUser         @relation("UpdatedProducts", fields: [updated_by_uuid], references: [uuid])
+  DeletedBy           BusinessUser?        @relation("DeletedProducts", fields: [deleted_by_uuid], references: [uuid])
+  ProductHistory      ProductHistory[]
+  CartItem            CartItem[]
+  serviceRequests     ServiceRequest[]
+  ecommerceOrderItems EcommerceOrderItem[]
 
   @@map("products")
 }
@@ -1404,4 +1410,80 @@ model BusinessOrderItem {
   UserItem UserItem      @relation(fields: [user_item_uuid], references: [uuid])
 
   @@map("business_order_items")
+}
+
+// ==========================================
+// MÓDULO DE E-COMMERCE (PEDIDOS E ENTREGAS)
+// ==========================================
+
+enum EcommerceOrderStatus {
+  PENDING_PAYMENT
+  PAID
+  PREPARING
+  IN_TRANSIT
+  DELIVERED
+  CANCELED
+}
+
+model EcommerceOrder {
+  uuid               String               @id @default(uuid())
+  user_info_uuid     String
+  business_info_uuid String
+  transaction_uuid   String?              @unique // Vínculo com o recibo de pagamento
+  status             EcommerceOrderStatus @default(PENDING_PAYMENT)
+  total_items_amount Int // Valor total dos produtos (centavos)
+  freight_amount     Int // Valor do frete (centavos)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  User        UserInfo             @relation(fields: [user_info_uuid], references: [uuid])
+  Business    BusinessInfo         @relation(fields: [business_info_uuid], references: [uuid])
+  Transaction Transactions?        @relation(fields: [transaction_uuid], references: [uuid])
+  Items       EcommerceOrderItem[]
+  Delivery    Delivery? // O pedido possui uma entrega atrelada
+
+  @@map("ecommerce_orders")
+}
+
+model EcommerceOrderItem {
+  uuid                 String @id @default(uuid())
+  ecommerce_order_uuid String
+  product_uuid         String
+  quantity             Int
+  unit_price           Int // Preço congelado no momento da compra
+
+  Order   EcommerceOrder @relation(fields: [ecommerce_order_uuid], references: [uuid])
+  Product Products       @relation(fields: [product_uuid], references: [uuid])
+
+  @@map("ecommerce_order_items")
+}
+
+enum DeliveryStatus {
+  DISTRIBUTING
+  WAITING_ACCEPTANCE
+  PENDING
+  ACCEPTED
+  NOT_ANSWERED
+  FINISHED
+  CANCELLED
+  UNKNOWN
+}
+
+model Delivery {
+  uuid                 String         @id @default(uuid())
+  ecommerce_order_uuid String         @unique // Vínculo direto com o pedido, não com o dinheiro
+  external_delivery_id String?        @unique // O id_mch da TaxiMachine
+  provider             String         @default("TAXIMACHINE")
+  status               DeliveryStatus @default(PENDING)
+  estimated_minutes    Int?
+  estimated_km         Float?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  Order        EcommerceOrder @relation(fields: [ecommerce_order_uuid], references: [uuid])
+  transactions Transactions[]
+
+  @@map("deliveries")
 }

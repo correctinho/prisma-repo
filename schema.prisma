@@ -1078,11 +1078,19 @@ model EanProducts {
 }
 
 model Cart {
-  uuid               String  @id @default(uuid())
+  uuid               String @id @default(uuid())
   user_info_uuid     String
   business_info_uuid String // Chave para garantir que o carrinho é de um único parceiro.
-  created_at         String
-  updated_at         String?
+
+  freight_amount            Int? // Valor cotado em centavos
+  freight_estimated_minutes Int? // Tempo estimado de entrega
+  destination_lat           Float? // Latitude do cliente (onde o pedido será entregue)
+  destination_lng           Float? // Longitude do cliente
+  destination_address       String? // Endereço (Rua, Número, Bairro) para não recalcular
+  freight_quoted_at         DateTime? // O carimbo de tempo da cotação (Para o TTL)
+
+  created_at String
+  updated_at String?
 
   // Relacionamentos
   user      UserInfo     @relation(fields: [user_info_uuid], references: [uuid])

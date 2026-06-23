@@ -190,11 +190,15 @@ model Address {
   city         String?
   state        String?
   country      String?
+  latitude     Float?
+  longitude    Float?
   created_at   String?
   updated_at   String?
 
-  BusinessInfo BusinessInfo[]
-  UserInfo     UserInfo[]
+  BusinessInfo      BusinessInfo[]
+  UserInfo          UserInfo[]
+  PartnerConfig     PartnerConfig[]
+  userNotifications UserNotification[]
 
   @@map("addresses")
 }
@@ -860,25 +864,27 @@ model PartnerConfig {
   description        String?
   sales_type         SalesType?
   cashback_tax       Int        @default(0)
-  latitude           Float?
-  longitude          Float?
   created_at         String?
   updated_at         String?
 
-  BusinessInfo BusinessInfo @relation(fields: [business_info_uuid], references: [uuid])
+  BusinessInfo          BusinessInfo @relation(fields: [business_info_uuid], references: [uuid])
+  DispatchAddress       Address?     @relation(fields: [dispatch_address_uuid], references: [uuid])
+  dispatch_address_uuid String?
 
   @@map("partner_config")
 }
 
 model UserNotification {
-  uuid           String  @id @default(uuid())
-  user_info_uuid String
-  title          String
-  description    String
-  read           Boolean
-  created_at     String
+  uuid                  String  @id @default(uuid())
+  user_info_uuid        String
+  title                 String
+  description           String
+  read                  Boolean
+  dispatch_address_uuid String?
+  created_at            String
 
-  UserInfo UserInfo @relation(fields: [user_info_uuid], references: [uuid])
+  UserInfo        UserInfo @relation(fields: [user_info_uuid], references: [uuid])
+  DispatchAddress Address? @relation(fields: [dispatch_address_uuid], references: [uuid])
 
   @@map("user_notification")
 }

@@ -16,6 +16,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model SystemConfig {
+  uuid        String   @id @default(uuid())
+  key         String   @unique // Ex: "ONBOARDING_FEE_CENTS"
+  value       String // Ex: "20000" (Salvando como string para suportar JSON futuro se necessário)
+  description String? // Ex: "Taxa de adesão cobrada no cadastro de novos lojistas"
+  updated_at  DateTime @default(now()) @updatedAt
+
+  @@map("system_configs")
+}
+
 model CorrectAdmin {
   uuid                    String                    @id @default(uuid())
   name                    String
@@ -53,6 +63,7 @@ enum Status {
 enum BusinessStatus {
   pending_approval
   pending_contract
+  awaiting_payment
   active
   inactive
 }
@@ -137,6 +148,7 @@ model BusinessInfo {
   employer_branch     String?
   payroll_closing_day Int? // Dia de fechamento da folha (1-31)
   txt_delivery_day    Int? // Dia de envio do arquivo TXT (1-31)
+  referred_by_code    String?             @map("referred_by_code")
   created_at          String
   updated_at          String?
   approved_at         String? // Adicionado para auditoria de aprovação
@@ -199,6 +211,7 @@ model Address {
   UserInfo          UserInfo[]
   PartnerConfig     PartnerConfig[]
   userNotifications UserNotification[]
+  carts             Cart[]
 
   @@map("addresses")
 }
@@ -637,6 +650,7 @@ enum TransactionType {
   CASH_OUT // Saque (se for registrar aqui)
   BENEFIT_CREDIT // Crédito de benefício pela empresa (se for registrar aqui)
   SUBSCRIPTION_PAYMENT // Pagamento de assinatura (B2C ou B2B)
+  ONBOARDING_PIX // Pagamento de adesão da empresa/parceiro
   // Adicionar outros tipos conforme sua necessidade
 }
 
@@ -1090,18 +1104,18 @@ model Cart {
 
   freight_amount            Int? // Valor cotado em centavos
   freight_estimated_minutes Int? // Tempo estimado de entrega
-  destination_lat           Float? // Latitude do cliente (onde o pedido será entregue)
-  destination_lng           Float? // Longitude do cliente
-  destination_address       String? // Endereço (Rua, Número, Bairro) para não recalcular
   freight_quoted_at         DateTime? // O carimbo de tempo da cotação (Para o TTL)
 
-  created_at String
-  updated_at String?
+  status String? @default("ACTIVE")
 
+  created_at               String
+  updated_at               String?
+  destination_address_uuid String?
+  DestinationAddress       Address?     @relation(fields: [destination_address_uuid], references: [uuid])
   // Relacionamentos
-  user      UserInfo     @relation(fields: [user_info_uuid], references: [uuid])
-  business  BusinessInfo @relation(fields: [business_info_uuid], references: [uuid])
-  cartItems CartItem[] // Um carrinho pode ter vários itens.
+  user                     UserInfo     @relation(fields: [user_info_uuid], references: [uuid])
+  business                 BusinessInfo @relation(fields: [business_info_uuid], references: [uuid])
+  cartItems                CartItem[] // Um carrinho pode ter vários itens.
 
   // Garante que um usuário só pode ter um carrinho ativo por parceiro.
   @@unique([user_info_uuid, business_info_uuid])

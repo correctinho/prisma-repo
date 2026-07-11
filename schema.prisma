@@ -760,6 +760,7 @@ enum CorrectAccountEventType {
   MANUAL_ADJUSTMENT // Ajuste manual (crédito ou débito)
   SERVICE_COST // Custo de serviço interno
   SUBSCRIPTION_REVENUE //Receita de assinatura recebida
+  ONBOARDING_REVENUE
   OTHER // Outros tipos
 }
 

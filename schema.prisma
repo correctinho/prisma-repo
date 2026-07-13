@@ -548,20 +548,31 @@ model ContractInfo {
   BusinessInfo BusinessInfo? @relation(fields: [business_info_uuid], references: [uuid])
   UserInfo     UserInfo?     @relation(fields: [user_info_uuid], references: [uuid])
 
-  BusinessContract BusinessContract[]
-
   @@map("contract_info")
+}
+
+enum BusinessContractStatus {
+  PENDING
+  SIGNED
 }
 
 model BusinessContract {
   uuid               String @id @default(uuid())
-  business_info_uuid String
-  contract_info_uuid String
+  business_info_uuid String @unique
+  terms_uuid         String
 
-  BusinessInfo BusinessInfo @relation(fields: [business_info_uuid], references: [uuid])
-  ContractInfo ContractInfo @relation(fields: [contract_info_uuid], references: [uuid])
+  rendered_html String                 @db.Text
+  status        BusinessContractStatus @default(PENDING)
 
-  @@map("business_contract")
+  created_at DateTime  @default(now())
+  signed_at  DateTime?
+
+  // Relacionamentos
+  BusinessInfo     BusinessInfo   @relation(fields: [business_info_uuid], references: [uuid])
+  TermsVersion     TermsOfService @relation(fields: [terms_uuid], references: [uuid])
+  contractInfoUuid String?
+
+  @@map("business_contracts")
 }
 
 enum OfflineTokenStatus {
@@ -1297,7 +1308,8 @@ model TermsOfService {
   updated_at DateTime @updatedAt
 
   // Relacionamento inverso: um termo tem muitos aceites
-  Acceptances TermAcceptance[]
+  Acceptances       TermAcceptance[]
+  businessContracts BusinessContract[]
 
   // Índice para buscar rapidamente a versão ativa de um tipo específico
   @@index([type, is_active])
@@ -1323,6 +1335,7 @@ model TermAcceptance {
   ip_address  String? // CRUCIAL para auditoria jurídica (guarda o IP da requisição)
   user_agent  String? // (Opcional) Guarda dados do navegador/dispositivo para mais robustez
 
+  snapshot_html    String? @db.Text
   // Útil para provar que no ato da compra X, os termos eram Y.
   transaction_uuid String?
   // --- RELACIONAMENTOS ---

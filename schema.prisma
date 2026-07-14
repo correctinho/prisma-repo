@@ -135,7 +135,7 @@ model CorrectAdminBusiness {
 model BusinessInfo {
   uuid                String              @id @default(uuid())
   address_uuid        String
-  fantasy_name        String
+  fantasy_name        String?
   corporate_reason    String?
   document            String              @unique
   classification      String

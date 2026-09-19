@@ -866,6 +866,7 @@ model PartnerCreditSpend {
 enum PartnerCreditStatus {
   PENDING // Aguardando data de disponibilidade (pode ter spent_amount > 0)
   SETTLED // Já foi liquidado (o valor restante foi movido para BusinessAccount.balance)
+  CANCELLED // A transação original foi cancelada antes da liquidação
 }
 
 enum SalesType {

@@ -138,8 +138,10 @@ model BusinessInfo {
   fantasy_name        String?
   corporate_reason    String?
   document            String              @unique
+  contract_number     String?             @unique
   classification      String
   colaborators_number Int
+  payment_receipt_url String?
   status              BusinessStatus      @default(pending_approval)
   phone_1             String
   phone_2             String?
@@ -149,9 +151,11 @@ model BusinessInfo {
   payroll_closing_day Int? // Dia de fechamento da folha (1-31)
   txt_delivery_day    Int? // Dia de envio do arquivo TXT (1-31)
   referred_by_code    String?             @map("referred_by_code")
-  created_at          String
-  updated_at          String?
-  approved_at         String? // Adicionado para auditoria de aprovação
+  created_at                String
+  updated_at                String?
+  approved_at               String? // Adicionado para auditoria de aprovação
+  legal_representative_name String?
+  legal_representative_cpf  String?
 
   Address Address? @relation(fields: [address_uuid], references: [uuid])
 
@@ -554,11 +558,12 @@ model ContractInfo {
 enum BusinessContractStatus {
   PENDING
   SIGNED
+  ARCHIVED
 }
 
 model BusinessContract {
   uuid               String @id @default(uuid())
-  business_info_uuid String @unique
+  business_info_uuid String
   terms_uuid         String
 
   rendered_html String                 @db.Text
@@ -878,15 +883,23 @@ enum SalesType {
 model PartnerConfig {
   uuid               String     @id @default(uuid())
   business_info_uuid String     @unique
+  pending_admin_tax          Int?
+  pending_marketing_tax      Int?
+  pending_use_marketing      Boolean?
+  pending_market_place_tax   Int?
+  pending_use_market_place   Boolean?
   main_branch        String
   partner_category   String[]
   items_uuid         String[]
   admin_tax          Int?
-  marketing_tax      Int?
-  use_marketing      Boolean
-  market_place_tax   Int?
-  use_market_place   Boolean
-  title              String?
+  marketing_tax         Int?
+  use_marketing         Boolean
+  market_place_tax      Int?
+  use_market_place      Boolean
+  use_correct_fidelity  Boolean @default(false)
+  use_special_products  Boolean @default(false)
+  use_employer_platform Boolean @default(false)
+  title                 String?
   phone              String?
   description        String?
   sales_type         SalesType?

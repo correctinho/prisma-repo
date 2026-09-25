@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "business_data_contract_number_key" ON "business_data"("contract_number");

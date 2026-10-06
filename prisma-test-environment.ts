@@ -37,7 +37,7 @@ export default class PrismaTestEnvironment extends NodeEnvironment {
     process.env.DATABASE_URL = this.connectionString;
     this.global.process.env.DATABASE_URL = this.connectionString;
 
-    await execSync(`npx prisma migrate deploy`);
+    await execSync(`npx prisma db push --skip-generate`);
 
     return super.setup();
   }

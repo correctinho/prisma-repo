@@ -667,6 +667,7 @@ enum TransactionType {
   BENEFIT_CREDIT // Crédito de benefício pela empresa (se for registrar aqui)
   SUBSCRIPTION_PAYMENT // Pagamento de assinatura (B2C ou B2B)
   ONBOARDING_PIX // Pagamento de adesão da empresa/parceiro
+  COMPANY_PRE_PAID_RECHARGE //Recarga de crédito de benefícios pré pagos do empregador
   // Adicionar outros tipos conforme sua necessidade
 }
 
@@ -1435,6 +1436,7 @@ model BusinessOrder {
   total_amount      Int // Valor total do pedido em centavos
   status            OrderStatus @default(PENDING)
   payment_proof_url String? // URL do comprovante (se houver upload)
+  provider_tx_id    String? // ID da transação no gateway (ex: Sicredi txid)
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -1542,4 +1544,13 @@ model Delivery {
   transactions Transactions[]
 
   @@map("deliveries")
+}
+
+model MassRegistrationRequest {
+  uuid                String   @id @default(uuid())
+  business_info_uuid  String
+  file_content        String   @db.Text // Salva o conteúdo do CSV para máxima segurança e simplicidade
+  status              String   @default("PENDING")
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
 }

@@ -151,6 +151,7 @@ model BusinessInfo {
   payroll_closing_day Int? // Dia de fechamento da folha (1-31)
   txt_delivery_day    Int? // Dia de envio do arquivo TXT (1-31)
   referred_by_code    String?             @map("referred_by_code")
+  timezone            String              @default("America/Campo_Grande")
   created_at                String
   updated_at                String?
   approved_at               String? // Adicionado para auditoria de aprovação

@@ -133,25 +133,25 @@ model CorrectAdminBusiness {
 }
 
 model BusinessInfo {
-  uuid                String              @id @default(uuid())
-  address_uuid        String
-  fantasy_name        String?
-  corporate_reason    String?
-  document            String              @unique
-  contract_number     String?             @unique
-  classification      String
-  colaborators_number Int
-  payment_receipt_url String?
-  status              BusinessStatus      @default(pending_approval)
-  phone_1             String
-  phone_2             String?
-  email               String              @unique
-  business_type       BusinessTypeOptions
-  employer_branch     String?
-  payroll_closing_day Int? // Dia de fechamento da folha (1-31)
-  txt_delivery_day    Int? // Dia de envio do arquivo TXT (1-31)
-  referred_by_code    String?             @map("referred_by_code")
-  timezone            String              @default("America/Campo_Grande")
+  uuid                      String              @id @default(uuid())
+  address_uuid              String
+  fantasy_name              String?
+  corporate_reason          String?
+  document                  String              @unique
+  contract_number           String?             @unique
+  classification            String
+  colaborators_number       Int
+  payment_receipt_url       String?
+  status                    BusinessStatus      @default(pending_approval)
+  phone_1                   String
+  phone_2                   String?
+  email                     String              @unique
+  business_type             BusinessTypeOptions
+  employer_branch           String?
+  payroll_closing_day       Int? // Dia de fechamento da folha (1-31)
+  txt_delivery_day          Int? // Dia de envio do arquivo TXT (1-31)
+  referred_by_code          String?             @map("referred_by_code")
+  timezone                  String              @default("America/Campo_Grande")
   created_at                String
   updated_at                String?
   approved_at               String? // Adicionado para auditoria de aprovação
@@ -883,31 +883,31 @@ enum SalesType {
 }
 
 model PartnerConfig {
-  uuid               String     @id @default(uuid())
-  business_info_uuid String     @unique
-  pending_admin_tax          Int?
-  pending_marketing_tax      Int?
-  pending_use_marketing      Boolean?
-  pending_market_place_tax   Int?
-  pending_use_market_place   Boolean?
-  main_branch        String
-  partner_category   String[]
-  items_uuid         String[]
-  admin_tax          Int?
-  marketing_tax         Int?
-  use_marketing         Boolean
-  market_place_tax      Int?
-  use_market_place      Boolean
-  use_correct_fidelity  Boolean @default(false)
-  use_special_products  Boolean @default(false)
-  use_employer_platform Boolean @default(false)
-  title                 String?
-  phone              String?
-  description        String?
-  sales_type         SalesType?
-  cashback_tax       Int        @default(0)
-  created_at         String?
-  updated_at         String?
+  uuid                     String     @id @default(uuid())
+  business_info_uuid       String     @unique
+  pending_admin_tax        Int?
+  pending_marketing_tax    Int?
+  pending_use_marketing    Boolean?
+  pending_market_place_tax Int?
+  pending_use_market_place Boolean?
+  main_branch              String
+  partner_category         String[]
+  items_uuid               String[]
+  admin_tax                Int?
+  marketing_tax            Int?
+  use_marketing            Boolean
+  market_place_tax         Int?
+  use_market_place         Boolean
+  use_correct_fidelity     Boolean    @default(false)
+  use_special_products     Boolean    @default(false)
+  use_employer_platform    Boolean    @default(false)
+  title                    String?
+  phone                    String?
+  description              String?
+  sales_type               SalesType?
+  cashback_tax             Int        @default(0)
+  created_at               String?
+  updated_at               String?
 
   BusinessInfo          BusinessInfo @relation(fields: [business_info_uuid], references: [uuid])
   DispatchAddress       Address?     @relation(fields: [dispatch_address_uuid], references: [uuid])
@@ -1548,10 +1548,85 @@ model Delivery {
 }
 
 model MassRegistrationRequest {
-  uuid                String   @id @default(uuid())
-  business_info_uuid  String
-  file_content        String   @db.Text // Salva o conteúdo do CSV para máxima segurança e simplicidade
-  status              String   @default("PENDING")
-  created_at          DateTime @default(now())
-  updated_at          DateTime @updatedAt
+  uuid               String   @id @default(uuid())
+  business_info_uuid String
+  file_content       String   @db.Text // Salva o conteúdo do CSV para máxima segurança e simplicidade
+  status             String   @default("PENDING")
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+}
+
+enum TicketOrigin {
+  EMPREGADOR
+  PARCEIRO
+  MEGA_APP
+}
+
+enum TicketStatus {
+  OPEN
+  ANSWERED
+  WAITING_USER
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum MessageSenderType {
+  CLIENT
+  SUPPORT
+  SYSTEM
+}
+
+model Ticket {
+  uuid     String         @id @default(uuid())
+  protocol String         @unique
+  origin   TicketOrigin
+  status   TicketStatus   @default(OPEN)
+  priority TicketPriority @default(MEDIUM)
+  category String
+  subject  String
+
+  business_id      String?
+  business_user_id String?
+  partner_id       String?
+  app_user_id      String?
+
+  user_name  String
+  user_email String?
+  user_phone String?
+
+  slack_channel_id String?
+  slack_thread_ts  String? @unique
+
+  messages TicketMessage[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([status])
+  @@index([business_id])
+  @@index([app_user_id])
+  @@index([slack_thread_ts])
+  @@map("tickets")
+}
+
+model TicketMessage {
+  uuid        String @id @default(uuid())
+  ticket_uuid String
+  ticket      Ticket @relation(fields: [ticket_uuid], references: [uuid], onDelete: Cascade)
+
+  sender_type MessageSenderType
+  sender_name String
+  message     String            @db.Text
+  attachments Json?
+
+  created_at DateTime @default(now())
+
+  @@index([ticket_uuid])
+  @@map("ticket_messages")
 }
